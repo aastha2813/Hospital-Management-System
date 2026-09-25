@@ -179,5 +179,6 @@ CREATE TABLE PAYMENT (
     bill_id INT,
     payment_date DATE,
     method VARCHAR(50),
+    amount DECIMAL(10,2),
     FOREIGN KEY (bill_id) REFERENCES BILL(bill_id)
 );

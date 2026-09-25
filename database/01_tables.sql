@@ -6,6 +6,7 @@
 
 
 -- 1. PERSON
+
 CREATE TABLE PERSON (
     person_id INT PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
@@ -19,6 +20,7 @@ CREATE TABLE PERSON (
 
 
 -- 2. HOSPITAL_BRANCH
+
 CREATE TABLE HOSPITAL_BRANCH (
     branch_id INT PRIMARY KEY,
     branch_name VARCHAR(100) NOT NULL,
@@ -30,6 +32,7 @@ CREATE TABLE HOSPITAL_BRANCH (
 
 
 -- 3. DEPARTMENT
+
 CREATE TABLE DEPARTMENT (
     dept_id INT PRIMARY KEY,
     dept_name VARCHAR(100) NOT NULL,
@@ -39,19 +42,21 @@ CREATE TABLE DEPARTMENT (
 
 
 -- 4. PATIENT
+
 CREATE TABLE PATIENT (
     patient_id INT PRIMARY KEY,
     blood_group VARCHAR(5),
     allergies VARCHAR(200),
     insurance_no VARCHAR(50),
     dept_id INT,
-    person_id INT,
+    person_id INT NOT NULL UNIQUE,
     FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id),
     FOREIGN KEY (person_id) REFERENCES PERSON(person_id)
 );
 
 
 -- 5. DOCTOR
+
 CREATE TABLE DOCTOR (
     doctor_id INT PRIMARY KEY,
     specialization VARCHAR(100),
@@ -59,13 +64,14 @@ CREATE TABLE DOCTOR (
     experience_years INT,
     consultation_fee DECIMAL(10,2),
     dept_id INT,
-    person_id INT,
+    person_id INT NOT NULL UNIQUE,
     FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id),
     FOREIGN KEY (person_id) REFERENCES PERSON(person_id)
 );
 
 
 -- 6. STAFF
+
 CREATE TABLE STAFF (
     staff_id INT PRIMARY KEY,
     role VARCHAR(50),
@@ -73,13 +79,14 @@ CREATE TABLE STAFF (
     office_no VARCHAR(20),
     phone VARCHAR(15),
     dept_id INT,
-    person_id INT,
+    person_id INT NOT NULL UNIQUE,
     FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id),
     FOREIGN KEY (person_id) REFERENCES PERSON(person_id)
 );
 
 
 -- 7. ROOM
+
 CREATE TABLE ROOM (
     room_id INT PRIMARY KEY,
     branch_id INT,
@@ -91,6 +98,7 @@ CREATE TABLE ROOM (
 
 
 -- 8. APPOINTMENT
+
 CREATE TABLE APPOINTMENT (
     appointment_id INT PRIMARY KEY,
     patient_id INT,
@@ -106,6 +114,7 @@ CREATE TABLE APPOINTMENT (
 
 
 -- 9. PRESCRIPTION
+
 CREATE TABLE PRESCRIPTION (
     prescription_id INT PRIMARY KEY,
     patient_id INT,
@@ -120,6 +129,7 @@ CREATE TABLE PRESCRIPTION (
 
 
 -- 10. MEDICATION
+
 CREATE TABLE MEDICATION (
     med_id INT PRIMARY KEY,
     prescription_id INT,
@@ -132,6 +142,7 @@ CREATE TABLE MEDICATION (
 
 
 -- 11. ADMISSION
+
 CREATE TABLE ADMISSION (
     admission_id INT PRIMARY KEY,
     patient_id INT,
@@ -150,6 +161,7 @@ CREATE TABLE ADMISSION (
 
 
 -- 12. BILL
+
 CREATE TABLE BILL (
     bill_id INT PRIMARY KEY,
     admission_id INT,
@@ -161,6 +173,7 @@ CREATE TABLE BILL (
 
 
 -- 13. PAYMENT
+
 CREATE TABLE PAYMENT (
     payment_id INT PRIMARY KEY,
     bill_id INT,

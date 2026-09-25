@@ -4,6 +4,7 @@
 -- PostgreSQL
 -- ============================================
 
+
 -- 1. PERSON
 CREATE TABLE PERSON (
     person_id INT PRIMARY KEY,
@@ -16,6 +17,7 @@ CREATE TABLE PERSON (
     address VARCHAR(200)
 );
 
+
 -- 2. HOSPITAL_BRANCH
 CREATE TABLE HOSPITAL_BRANCH (
     branch_id INT PRIMARY KEY,
@@ -26,6 +28,7 @@ CREATE TABLE HOSPITAL_BRANCH (
     contact_no VARCHAR(15)
 );
 
+
 -- 3. DEPARTMENT
 CREATE TABLE DEPARTMENT (
     dept_id INT PRIMARY KEY,
@@ -34,6 +37,7 @@ CREATE TABLE DEPARTMENT (
     description VARCHAR(200)
 );
 
+
 -- 4. PATIENT
 CREATE TABLE PATIENT (
     patient_id INT PRIMARY KEY,
@@ -41,8 +45,11 @@ CREATE TABLE PATIENT (
     allergies VARCHAR(200),
     insurance_no VARCHAR(50),
     dept_id INT,
-    FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id)
+    person_id INT,
+    FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id),
+    FOREIGN KEY (person_id) REFERENCES PERSON(person_id)
 );
+
 
 -- 5. DOCTOR
 CREATE TABLE DOCTOR (
@@ -52,8 +59,11 @@ CREATE TABLE DOCTOR (
     experience_years INT,
     consultation_fee DECIMAL(10,2),
     dept_id INT,
-    FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id)
+    person_id INT,
+    FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id),
+    FOREIGN KEY (person_id) REFERENCES PERSON(person_id)
 );
+
 
 -- 6. STAFF
 CREATE TABLE STAFF (
@@ -63,8 +73,11 @@ CREATE TABLE STAFF (
     office_no VARCHAR(20),
     phone VARCHAR(15),
     dept_id INT,
-    FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id)
+    person_id INT,
+    FOREIGN KEY (dept_id) REFERENCES DEPARTMENT(dept_id),
+    FOREIGN KEY (person_id) REFERENCES PERSON(person_id)
 );
+
 
 -- 7. ROOM
 CREATE TABLE ROOM (
@@ -75,6 +88,7 @@ CREATE TABLE ROOM (
     status VARCHAR(20),
     FOREIGN KEY (branch_id) REFERENCES HOSPITAL_BRANCH(branch_id)
 );
+
 
 -- 8. APPOINTMENT
 CREATE TABLE APPOINTMENT (
@@ -90,6 +104,7 @@ CREATE TABLE APPOINTMENT (
     FOREIGN KEY (doctor_id) REFERENCES DOCTOR(doctor_id)
 );
 
+
 -- 9. PRESCRIPTION
 CREATE TABLE PRESCRIPTION (
     prescription_id INT PRIMARY KEY,
@@ -103,6 +118,7 @@ CREATE TABLE PRESCRIPTION (
     FOREIGN KEY (appointment_id) REFERENCES APPOINTMENT(appointment_id)
 );
 
+
 -- 10. MEDICATION
 CREATE TABLE MEDICATION (
     med_id INT PRIMARY KEY,
@@ -113,6 +129,7 @@ CREATE TABLE MEDICATION (
     duration VARCHAR(50),
     FOREIGN KEY (prescription_id) REFERENCES PRESCRIPTION(prescription_id)
 );
+
 
 -- 11. ADMISSION
 CREATE TABLE ADMISSION (
@@ -131,6 +148,7 @@ CREATE TABLE ADMISSION (
     FOREIGN KEY (room_id) REFERENCES ROOM(room_id)
 );
 
+
 -- 12. BILL
 CREATE TABLE BILL (
     bill_id INT PRIMARY KEY,
@@ -140,6 +158,7 @@ CREATE TABLE BILL (
     status VARCHAR(20),
     FOREIGN KEY (admission_id) REFERENCES ADMISSION(admission_id)
 );
+
 
 -- 13. PAYMENT
 CREATE TABLE PAYMENT (

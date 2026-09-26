@@ -1,0 +1,2529 @@
+/* =========================================================
+   GLOBAL
+========================================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    font-family: Inter, Arial, Helvetica, sans-serif;
+    background: #f4f7fb;
+    color: #0f172a;
+}
+
+button,
+input {
+    font-family: inherit;
+}
+
+button {
+    outline: none;
+}
+
+
+/* =========================================================
+   APP
+========================================================= */
+
+.app {
+    min-height: 100vh;
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+
+.main-content {
+    margin-left: 285px;
+    min-height: 100vh;
+    background: #f4f7fb;
+}
+
+
+/* =========================================================
+   TOPBAR
+========================================================= */
+
+.topbar {
+    height: 90px;
+    background: #ffffff;
+    border-bottom: 1px solid #e7ebf2;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 36px;
+
+    position: relative;
+    z-index: 100;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+}
+
+.page-heading h1 {
+    margin: 0;
+
+    font-size: 28px;
+    font-weight: 700;
+
+    color: #0f172a;
+
+    letter-spacing: -0.5px;
+}
+
+.page-heading p {
+    margin: 5px 0 0;
+
+    font-size: 13px;
+
+    color: #718096;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+}
+
+
+/* =========================================================
+   CUSTOM BRANCH DROPDOWN
+========================================================= */
+
+.branch-dropdown {
+    position: relative;
+
+    width: 250px;
+
+    z-index: 1000;
+}
+
+
+/* =========================================================
+   BRANCH DROPDOWN TRIGGER
+========================================================= */
+
+.branch-dropdown-trigger {
+    width: 100%;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    padding: 0 12px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    color: #334155;
+
+    cursor: pointer;
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.branch-dropdown-trigger:hover {
+    border-color: #cbd5e1;
+
+    background: #fcfdff;
+}
+
+.branch-dropdown-trigger.open {
+    border-color: #93c5fd;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.branch-dropdown-trigger > svg:first-child {
+    color: #2563eb;
+
+    flex-shrink: 0;
+}
+
+.branch-trigger-text {
+    flex: 1;
+
+    text-align: left;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.branch-dropdown-trigger > svg:last-child {
+    color: #64748b;
+
+    flex-shrink: 0;
+
+    transition: transform 0.2s ease;
+}
+
+.rotate-arrow {
+    transform: rotate(180deg);
+}
+
+
+/* =========================================================
+   BRANCH DROPDOWN MENU
+========================================================= */
+
+.branch-dropdown-menu {
+    position: absolute;
+
+    top: calc(100% + 8px);
+    left: 0;
+
+    width: 100%;
+
+    padding: 6px;
+
+    background: #ffffff;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+
+    box-shadow:
+        0 12px 30px rgba(15, 23, 42, 0.12),
+        0 3px 8px rgba(15, 23, 42, 0.05);
+
+    animation: branchDropdownOpen 0.16s ease-out;
+}
+
+@keyframes branchDropdownOpen {
+
+    from {
+        opacity: 0;
+
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform: translateY(0);
+    }
+
+}
+
+
+/* =========================================================
+   BRANCH OPTION
+========================================================= */
+
+.branch-option {
+    width: 100%;
+
+    min-height: 58px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 9px 10px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    font-family: inherit;
+
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.branch-option:hover {
+    background: #f8fafc;
+}
+
+.branch-option.selected {
+    background: #eff6ff;
+}
+
+
+/* =========================================================
+   BRANCH OPTION ICON
+========================================================= */
+
+.branch-option-icon {
+    width: 34px;
+    height: 34px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: #f1f5f9;
+
+    color: #64748b;
+}
+
+.branch-option.selected .branch-option-icon {
+    background: #dbeafe;
+
+    color: #2563eb;
+}
+
+.branch-option:hover .branch-option-icon {
+    background: #e0f2fe;
+
+    color: #2563eb;
+}
+
+
+/* =========================================================
+   BRANCH OPTION TEXT
+========================================================= */
+
+.branch-option-content {
+    min-width: 0;
+
+    flex: 1;
+}
+
+.branch-option-content strong {
+    display: block;
+
+    color: #1e293b;
+
+    font-size: 11px;
+    font-weight: 600;
+
+    line-height: 1.35;
+}
+
+.branch-option-content span {
+    display: block;
+
+    margin-top: 3px;
+
+    color: #94a3b8;
+
+    font-size: 9px;
+
+    line-height: 1.3;
+}
+
+.branch-option.selected
+.branch-option-content strong {
+    color: #1d4ed8;
+}
+
+
+/* =========================================================
+   BRANCH CHECK MARK
+========================================================= */
+
+.branch-check {
+    flex-shrink: 0;
+
+    color: #2563eb;
+}
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+.search-box {
+    width: 270px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    padding: 0 13px;
+
+    background: #f8fafc;
+
+    border: 1px solid #e5eaf1;
+
+    border-radius: 9px;
+
+    color: #94a3b8;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.search-box:focus-within {
+    background: #ffffff;
+
+    border-color: #93c5fd;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.07);
+}
+
+.search-box input {
+    width: 100%;
+
+    border: none;
+    outline: none;
+
+    background: transparent;
+
+    font-size: 12px;
+
+    color: #334155;
+}
+
+.search-box input::placeholder {
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   NOTIFICATION
+========================================================= */
+
+.notification-button {
+    width: 42px;
+    height: 42px;
+
+    border: 1px solid #e5eaf1;
+
+    background: #ffffff;
+
+    border-radius: 9px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #475569;
+
+    cursor: pointer;
+
+    position: relative;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.notification-button:hover {
+    background: #f8fafc;
+
+    border-color: #cbd5e1;
+}
+
+.notification-dot {
+    width: 6px;
+    height: 6px;
+
+    background: #ef4444;
+
+    border-radius: 50%;
+
+    position: absolute;
+
+    top: 8px;
+    right: 9px;
+
+    border: 1px solid #ffffff;
+}
+
+
+/* =========================================================
+   PROFILE
+========================================================= */
+
+.topbar-profile {
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    padding: 3px 9px 3px 4px;
+
+    border: 1px solid #e5eaf1;
+
+    border-radius: 9px;
+
+    background: #ffffff;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.topbar-profile:hover {
+    background: #f8fafc;
+
+    border-color: #cbd5e1;
+}
+
+.profile-avatar {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 8px;
+
+    background: #dbeafe;
+
+    color: #2563eb;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: 700;
+
+    font-size: 13px;
+}
+
+.profile-details strong {
+    display: block;
+
+    font-size: 11px;
+
+    color: #1e293b;
+}
+
+.profile-details span {
+    display: block;
+
+    margin-top: 2px;
+
+    font-size: 9px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   DASHBOARD CONTENT
+========================================================= */
+
+.dashboard-content {
+    padding: 30px 36px 45px;
+}
+
+
+/* =========================================================
+   SELECTED BRANCH LABEL
+========================================================= */
+
+.selected-branch-label {
+    margin-top: 18px;
+
+    margin-bottom: 5px;
+
+    font-size: 13px;
+
+    color: #64748b;
+
+    font-weight: 500;
+}
+
+.selected-branch-label strong {
+    margin-left: 5px;
+
+    color: #2563eb;
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   WELCOME CARD
+========================================================= */
+
+.welcome-card {
+    min-height: 174px;
+
+    background:
+        linear-gradient(
+            110deg,
+            #2563eb,
+            #1d4ed8
+        );
+
+    border-radius: 15px;
+
+    padding: 30px 36px;
+
+    color: #ffffff;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    overflow: hidden;
+
+    position: relative;
+
+    margin-bottom: 22px;
+}
+
+.welcome-card::after {
+    content: "";
+
+    width: 300px;
+    height: 300px;
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    border-radius: 50%;
+
+    position: absolute;
+
+    right: -110px;
+    top: -145px;
+}
+
+.welcome-label {
+    font-size: 10px;
+
+    font-weight: 700;
+
+    letter-spacing: 1.5px;
+
+    color: #bfdbfe;
+}
+
+.welcome-content h2 {
+    margin: 9px 0 7px;
+
+    font-size: 25px;
+
+    line-height: 1.2;
+}
+
+.welcome-content p {
+    margin: 0;
+
+    font-size: 13px;
+
+    color: #dbeafe;
+}
+
+.welcome-illustration {
+    width: 116px;
+    height: 116px;
+
+    border-radius: 50%;
+
+    background: rgba(255, 255, 255, 0.11);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-right: 30px;
+
+    color: rgba(255, 255, 255, 0.9);
+
+    position: relative;
+
+    z-index: 1;
+}
+
+
+/* =========================================================
+   STAT CARDS
+========================================================= */
+
+.stats-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 16px;
+
+    margin-bottom: 28px;
+}
+
+.stat-card {
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 11px;
+
+    padding: 18px;
+
+    display: flex;
+
+    gap: 13px;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 25px rgba(15, 23, 42, 0.06);
+}
+
+.stat-icon {
+    width: 43px;
+    height: 43px;
+
+    border-radius: 9px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+.stat-icon.blue,
+.quick-icon.blue,
+.activity-icon.blue {
+    background: #eff6ff;
+
+    color: #2563eb;
+}
+
+.stat-icon.purple,
+.quick-icon.purple,
+.activity-icon.purple {
+    background: #f5f3ff;
+
+    color: #7c3aed;
+}
+
+.stat-icon.orange,
+.quick-icon.orange,
+.activity-icon.orange {
+    background: #fff7ed;
+
+    color: #ea580c;
+}
+
+.stat-icon.green,
+.quick-icon.green,
+.activity-icon.green {
+    background: #ecfdf5;
+
+    color: #059669;
+}
+
+.stat-info {
+    min-width: 0;
+}
+
+.stat-info > span {
+    font-size: 11px;
+
+    color: #64748b;
+}
+
+.stat-value-row {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-top: 3px;
+}
+
+.stat-value-row h2 {
+    margin: 0;
+
+    font-size: 23px;
+}
+
+.stat-value-row small {
+    font-size: 9px;
+
+    font-weight: 600;
+}
+
+.positive {
+    color: #16a34a;
+}
+
+.warning {
+    color: #ea580c;
+}
+
+.stat-info p {
+    margin: 3px 0 0;
+
+    font-size: 9px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   SECTION HEADER
+========================================================= */
+
+.section-header {
+    margin-bottom: 12px;
+}
+
+.section-header h3 {
+    margin: 0;
+
+    font-size: 15px;
+}
+
+.section-header p {
+    margin: 4px 0 0;
+
+    color: #94a3b8;
+
+    font-size: 10px;
+}
+
+
+/* =========================================================
+   QUICK ACTIONS
+========================================================= */
+
+.quick-actions {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 12px;
+
+    margin-bottom: 25px;
+}
+
+.quick-action {
+    border: 1px solid #e7ebf2;
+
+    background: #ffffff;
+
+    border-radius: 10px;
+
+    padding: 14px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    color: #475569;
+
+    transition:
+        0.2s ease;
+}
+
+.quick-action:hover {
+    border-color: #bfdbfe;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 7px 20px rgba(15, 23, 42, 0.05);
+}
+
+.quick-icon {
+    width: 38px;
+    height: 38px;
+
+    border-radius: 8px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+.quick-action div:nth-child(2) {
+    flex: 1;
+}
+
+.quick-action strong {
+    display: block;
+
+    font-size: 11px;
+
+    color: #1e293b;
+}
+
+.quick-action span {
+    display: block;
+
+    margin-top: 3px;
+
+    font-size: 9px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   DASHBOARD GRID
+========================================================= */
+
+.dashboard-grid {
+    display: grid;
+
+    grid-template-columns:
+        1.35fr 1fr;
+
+    gap: 18px;
+
+    margin-bottom: 18px;
+}
+
+.bottom-grid {
+    grid-template-columns:
+        1.5fr 1fr;
+}
+
+.dashboard-card {
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 11px;
+
+    padding: 20px;
+}
+
+.card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    margin-bottom: 17px;
+}
+
+.card-header h3 {
+    margin: 0;
+
+    font-size: 14px;
+}
+
+.card-header p {
+    margin: 4px 0 0;
+
+    color: #94a3b8;
+
+    font-size: 9px;
+}
+
+.view-all-button {
+    border: none;
+
+    background: transparent;
+
+    color: #2563eb;
+
+    display: flex;
+    align-items: center;
+
+    gap: 4px;
+
+    font-size: 10px;
+
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   BRANCH LIST
+========================================================= */
+
+.branch-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+.branch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 13px;
+
+    border: 1px solid #edf0f5;
+
+    border-radius: 9px;
+
+    background: #fafbfc;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.branch-row:hover {
+    background: #f8fafc;
+
+    border-color: #dbeafe;
+}
+
+.branch-main {
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    min-width: 0;
+}
+
+.branch-icon {
+    width: 38px;
+    height: 38px;
+
+    border-radius: 8px;
+
+    background: #eff6ff;
+
+    color: #2563eb;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+.branch-main strong {
+    display: block;
+
+    font-size: 11px;
+
+    color: #1e293b;
+}
+
+.branch-main span {
+    display: block;
+
+    margin-top: 3px;
+
+    font-size: 9px;
+
+    color: #94a3b8;
+}
+
+.branch-stats {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    font-size: 9px;
+
+    color: #64748b;
+}
+
+.active-status {
+    background: #dcfce7;
+
+    color: #15803d;
+
+    padding: 5px 8px;
+
+    border-radius: 20px;
+
+    font-weight: 600;
+}
+
+.empty-state {
+    padding: 25px;
+
+    text-align: center;
+
+    font-size: 11px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   ROOM OCCUPANCY
+========================================================= */
+
+.total-label {
+    color: #64748b;
+
+    font-size: 10px;
+}
+
+.room-stat-container {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 50px;
+
+    padding: 12px 0 18px;
+}
+
+.room-stat {
+    text-align: center;
+}
+
+.room-number {
+    display: block;
+
+    font-size: 31px;
+
+    font-weight: 700;
+}
+
+.room-number.vacant {
+    color: #16a34a;
+}
+
+.room-number.occupied {
+    color: #dc2626;
+}
+
+.room-stat > span:last-child {
+    font-size: 10px;
+
+    color: #64748b;
+}
+
+.room-divider {
+    height: 45px;
+
+    width: 1px;
+
+    background: #e2e8f0;
+}
+
+.occupancy-bar {
+    width: 100%;
+
+    height: 8px;
+
+    display: flex;
+
+    overflow: hidden;
+
+    border-radius: 20px;
+
+    background: #e2e8f0;
+}
+
+.vacant-progress {
+    background: #22c55e;
+
+    transition: width 0.3s ease;
+}
+
+.occupied-progress {
+    background: #ef4444;
+
+    transition: width 0.3s ease;
+}
+
+.occupancy-footer {
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-top: 12px;
+
+    font-size: 9px;
+
+    color: #64748b;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    display: inline-block;
+
+    margin-right: 5px;
+}
+
+.vacant-dot {
+    background: #22c55e;
+}
+
+.occupied-dot {
+    background: #ef4444;
+}
+
+
+/* =========================================================
+   APPOINTMENTS
+========================================================= */
+
+.appointment-list {
+    display: flex;
+
+    flex-direction: column;
+}
+
+.appointment-row {
+    display: grid;
+
+    grid-template-columns:
+        55px 1.3fr 1fr 85px 18px;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 13px 4px;
+
+    border-top: 1px solid #edf0f5;
+}
+
+.appointment-time strong {
+    display: block;
+
+    font-size: 11px;
+}
+
+.appointment-time span {
+    font-size: 8px;
+
+    color: #94a3b8;
+}
+
+.appointment-patient {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+}
+
+.patient-avatar {
+    width: 30px;
+    height: 30px;
+
+    border-radius: 8px;
+
+    background: #eff6ff;
+
+    color: #2563eb;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 9px;
+
+    font-weight: 700;
+}
+
+.appointment-patient strong {
+    display: block;
+
+    font-size: 10px;
+}
+
+.appointment-patient span {
+    display: block;
+
+    margin-top: 2px;
+
+    font-size: 8px;
+
+    color: #94a3b8;
+}
+
+.appointment-doctor span {
+    display: block;
+
+    font-size: 8px;
+
+    color: #94a3b8;
+}
+
+.appointment-doctor strong {
+    display: block;
+
+    margin-top: 2px;
+
+    font-size: 9px;
+}
+
+.scheduled-badge,
+.completed-badge {
+    padding: 5px 7px;
+
+    border-radius: 20px;
+
+    font-size: 8px;
+
+    font-weight: 600;
+
+    text-align: center;
+}
+
+.scheduled-badge {
+    background: #eff6ff;
+
+    color: #2563eb;
+}
+
+.completed-badge {
+    background: #ecfdf5;
+
+    color: #15803d;
+}
+
+
+/* =========================================================
+   RECENT ACTIVITY
+========================================================= */
+
+.activity-list {
+    display: flex;
+
+    flex-direction: column;
+}
+
+.activity-item {
+    display: flex;
+
+    gap: 10px;
+
+    padding: 12px 0;
+
+    border-top: 1px solid #edf0f5;
+}
+
+.activity-icon {
+    width: 32px;
+    height: 32px;
+
+    border-radius: 8px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+.activity-item strong {
+    display: block;
+
+    font-size: 10px;
+}
+
+.activity-item span {
+    display: block;
+
+    margin-top: 3px;
+
+    font-size: 9px;
+
+    color: #64748b;
+}
+
+.activity-item small {
+    display: block;
+
+    margin-top: 4px;
+
+    font-size: 8px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   RESPONSIVE - LARGE TABLET
+========================================================= */
+
+@media (max-width: 1200px) {
+
+    .main-content {
+        margin-left: 250px;
+    }
+
+    .stats-grid,
+    .quick-actions {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .dashboard-grid,
+    .bottom-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .branch-dropdown {
+        width: 220px;
+    }
+
+    .search-box {
+        width: 220px;
+    }
+
+}
+
+
+/* =========================================================
+   RESPONSIVE - TABLET
+========================================================= */
+
+@media (max-width: 1000px) {
+
+    .main-content {
+        margin-left: 230px;
+    }
+
+    .topbar {
+        padding: 0 22px;
+    }
+
+    .dashboard-content {
+        padding: 25px 22px 40px;
+    }
+
+    .branch-dropdown {
+        width: 200px;
+    }
+
+    .search-box {
+        width: 190px;
+    }
+
+    .profile-details {
+        display: none;
+    }
+
+}
+
+
+/* =========================================================
+   RESPONSIVE - SMALL TABLET
+========================================================= */
+
+@media (max-width: 800px) {
+
+    .topbar {
+        height: auto;
+
+        min-height: 82px;
+
+        padding: 14px 18px;
+
+        gap: 12px;
+    }
+
+    .topbar-right {
+        gap: 8px;
+    }
+
+    .branch-dropdown {
+        width: 180px;
+    }
+
+    .search-box {
+        width: 170px;
+    }
+
+    .welcome-card {
+        padding: 25px;
+    }
+
+    .welcome-illustration {
+        width: 90px;
+        height: 90px;
+
+        margin-right: 10px;
+    }
+
+}
+
+
+/* =========================================================
+   RESPONSIVE - MOBILE
+========================================================= */
+
+@media (max-width: 650px) {
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .topbar {
+        flex-direction: column;
+
+        align-items: stretch;
+
+        padding: 15px;
+
+        height: auto;
+    }
+
+    .topbar-right {
+        width: 100%;
+
+        flex-wrap: wrap;
+    }
+
+    .branch-dropdown {
+        width: 100%;
+
+        order: 1;
+    }
+
+    .search-box {
+        flex: 1;
+
+        width: auto;
+
+        order: 2;
+    }
+
+    .notification-button {
+        order: 3;
+    }
+
+    .topbar-profile {
+        order: 4;
+    }
+
+    .dashboard-content {
+        padding: 20px 15px 35px;
+    }
+
+    .stats-grid,
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .welcome-card {
+        min-height: 155px;
+
+        padding: 24px;
+    }
+
+    .welcome-content h2 {
+        font-size: 21px;
+    }
+
+    .welcome-content p {
+        font-size: 11px;
+    }
+
+    .welcome-illustration {
+        display: none;
+    }
+
+    .branch-row {
+        align-items: flex-start;
+
+        gap: 10px;
+    }
+
+    .branch-stats {
+        flex-direction: column;
+
+        align-items: flex-end;
+
+        gap: 5px;
+    }
+
+    .room-stat-container {
+        gap: 35px;
+    }
+
+    .appointment-row {
+        grid-template-columns:
+            50px 1fr 18px;
+    }
+
+    .appointment-doctor,
+    .scheduled-badge,
+    .completed-badge {
+        display: none;
+    }
+
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE
+========================================================= */
+
+@media (max-width: 420px) {
+
+    .search-box {
+        width: 100%;
+
+        flex: 1 1 100%;
+    }
+
+    .notification-button,
+    .topbar-profile {
+        flex-shrink: 0;
+    }
+
+    .page-heading h1 {
+        font-size: 23px;
+    }
+
+    .dashboard-content {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+}
+
+/* =========================================================
+   CITYCARE - INTERNAL PAGES UI
+   Patients / Doctors / Appointments / Admissions /
+   Rooms / Billing / Doctor Notes / IoT Vitals /
+   Branches / Settings
+========================================================= */
+
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+
+.page-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+
+    margin-bottom: 22px;
+}
+
+.page-section-header h2 {
+    margin: 0;
+
+    font-size: 22px;
+    font-weight: 700;
+
+    color: #0f172a;
+    letter-spacing: -0.3px;
+}
+
+.page-section-header p {
+    margin: 6px 0 0;
+
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   PRIMARY ACTION BUTTON
+========================================================= */
+
+.primary-action {
+    border: none !important;
+
+    background: #2563eb !important;
+    color: #ffffff !important;
+
+    padding: 10px 16px;
+
+    border-radius: 8px;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.primary-action:hover {
+    background: #1d4ed8 !important;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 5px 14px rgba(37, 99, 235, 0.22);
+}
+
+
+/* =========================================================
+   DATA CARD
+========================================================= */
+
+.data-card {
+    width: 100%;
+
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 12px;
+
+    overflow: hidden;
+
+    margin-bottom: 20px;
+}
+
+.data-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 18px 20px;
+
+    border-bottom: 1px solid #edf0f5;
+}
+
+.data-card-header h3 {
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    color: #1e293b;
+}
+
+.data-card-header p {
+    margin: 4px 0 0;
+
+    font-size: 10px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   TABLE CONTAINER
+========================================================= */
+
+.table-wrapper {
+    width: 100%;
+
+    overflow-x: auto;
+}
+
+.table-wrapper table {
+    width: 100%;
+
+    border-collapse: collapse;
+
+    min-width: 850px;
+
+    table-layout: auto;
+}
+
+.table-wrapper thead {
+    background: #f8fafc;
+}
+
+.table-wrapper th {
+    padding: 13px 18px;
+
+    text-align: left;
+
+    font-size: 10px;
+    font-weight: 700;
+
+    color: #64748b;
+
+    white-space: nowrap;
+
+    border-bottom: 1px solid #e7ebf2;
+}
+
+.table-wrapper td {
+    padding: 13px 18px;
+
+    text-align: left;
+
+    font-size: 11px;
+
+    color: #475569;
+
+    white-space: nowrap;
+
+    border-bottom: 1px solid #f1f5f9;
+
+    vertical-align: middle;
+}
+
+.table-wrapper tbody tr {
+    transition: background 0.15s ease;
+}
+
+.table-wrapper tbody tr:hover {
+    background: #f8fafc;
+}
+
+.table-wrapper tbody tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* =========================================================
+   TABLE PERSON
+========================================================= */
+
+.table-person {
+    display: flex !important;
+
+    align-items: center !important;
+
+    gap: 10px !important;
+
+    min-width: 190px;
+}
+
+.table-person strong {
+    display: block !important;
+
+    margin: 0 !important;
+
+    font-size: 11px !important;
+
+    font-weight: 600 !important;
+
+    line-height: 1.3 !important;
+
+    color: #1e293b !important;
+}
+
+.table-person span {
+    display: block !important;
+
+    margin: 3px 0 0 !important;
+
+    font-size: 9px !important;
+
+    line-height: 1.2 !important;
+
+    color: #94a3b8 !important;
+}
+
+
+/* =========================================================
+   TABLE AVATAR
+========================================================= */
+
+.table-avatar {
+    width: 36px !important;
+    height: 36px !important;
+
+    min-width: 36px !important;
+
+    border-radius: 9px !important;
+
+    display: flex !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    font-size: 11px !important;
+
+    font-weight: 700 !important;
+
+    flex-shrink: 0 !important;
+}
+
+.blue-avatar {
+    background: #eff6ff !important;
+
+    color: #2563eb !important;
+}
+
+.purple-avatar {
+    background: #f5f3ff !important;
+
+    color: #7c3aed !important;
+}
+
+
+/* =========================================================
+   ID BADGES
+========================================================= */
+
+.id-badge {
+    display: inline-flex !important;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 5px 8px !important;
+
+    border-radius: 6px !important;
+
+    background: #eff6ff !important;
+
+    color: #2563eb !important;
+
+    font-size: 9px !important;
+
+    font-weight: 700 !important;
+
+    white-space: nowrap;
+}
+
+.purple-id {
+    background: #f5f3ff !important;
+
+    color: #7c3aed !important;
+}
+
+.orange-id {
+    background: #fff7ed !important;
+
+    color: #ea580c !important;
+}
+
+.green-id {
+    background: #ecfdf5 !important;
+
+    color: #059669 !important;
+}
+
+
+/* =========================================================
+   STATUS BADGES
+========================================================= */
+
+.status-badge {
+    display: inline-flex !important;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 5px 9px !important;
+
+    border-radius: 20px !important;
+
+    font-size: 9px !important;
+
+    font-weight: 600 !important;
+
+    white-space: nowrap;
+}
+
+.status-green {
+    background: #dcfce7 !important;
+
+    color: #15803d !important;
+}
+
+.status-blue {
+    background: #dbeafe !important;
+
+    color: #2563eb !important;
+}
+
+.status-gray {
+    background: #f1f5f9 !important;
+
+    color: #64748b !important;
+}
+
+
+/* =========================================================
+   MONEY
+========================================================= */
+
+.money-cell {
+    color: #15803d !important;
+
+    font-weight: 600 !important;
+}
+
+
+/* =========================================================
+   EMPTY / LOADING
+========================================================= */
+
+.table-loading,
+.table-empty {
+    padding: 60px 20px;
+
+    text-align: center;
+
+    font-size: 11px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   PAGE STAT CARDS
+========================================================= */
+
+.page-stat-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 16px;
+
+    margin-bottom: 20px;
+}
+
+.page-stat-card {
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+
+    padding: 18px;
+
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 11px;
+
+    color: #2563eb;
+}
+
+.page-stat-card svg {
+    width: 42px;
+    height: 42px;
+
+    padding: 10px;
+
+    border-radius: 9px;
+
+    background: #eff6ff;
+}
+
+.page-stat-card span {
+    display: block;
+
+    font-size: 10px;
+
+    color: #94a3b8;
+}
+
+.page-stat-card strong {
+    display: block;
+
+    margin-top: 4px;
+
+    font-size: 20px;
+
+    color: #1e293b;
+}
+
+.page-stat-card.green-card {
+    color: #059669;
+}
+
+.page-stat-card.green-card svg {
+    background: #ecfdf5;
+}
+
+
+/* =========================================================
+   BRANCH PAGE
+========================================================= */
+
+.branch-page-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 18px;
+}
+
+.branch-detail-card {
+    position: relative;
+
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 12px;
+
+    padding: 21px;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.branch-detail-card:hover {
+    transform: translateY(-2px);
+
+    border-color: #dbeafe;
+
+    box-shadow:
+        0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.branch-detail-icon {
+    width: 46px;
+    height: 46px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: #eff6ff;
+
+    color: #2563eb;
+
+    margin-bottom: 15px;
+}
+
+.branch-detail-content h3 {
+    margin: 0 0 11px;
+
+    font-size: 15px;
+
+    color: #1e293b;
+}
+
+.branch-detail-content p {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    margin: 7px 0;
+
+    font-size: 10px;
+
+    color: #64748b;
+}
+
+.branch-detail-content p svg {
+    color: #94a3b8;
+
+    flex-shrink: 0;
+}
+
+.branch-detail-footer {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-top: 18px;
+
+    padding-top: 13px;
+
+    border-top: 1px solid #edf0f5;
+
+    font-size: 10px;
+
+    color: #64748b;
+}
+
+
+/* =========================================================
+   ROOMS
+========================================================= */
+
+.room-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+    gap: 15px;
+}
+
+.room-card {
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 11px;
+
+    padding: 17px;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.room-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 25px rgba(15, 23, 42, 0.06);
+}
+
+.room-occupied {
+    border-top: 3px solid #ef4444;
+}
+
+.room-vacant {
+    border-top: 3px solid #22c55e;
+}
+
+.room-card-top {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+}
+
+.room-card-icon {
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: #eff6ff;
+
+    color: #2563eb;
+}
+
+.room-status {
+    padding: 5px 8px;
+
+    border-radius: 20px;
+
+    font-size: 8px;
+
+    font-weight: 700;
+}
+
+.room-status-occupied {
+    background: #fee2e2;
+
+    color: #dc2626;
+}
+
+.room-status-vacant {
+    background: #dcfce7;
+
+    color: #15803d;
+}
+
+.room-card h3 {
+    margin: 15px 0 5px;
+
+    font-size: 14px;
+
+    color: #1e293b;
+}
+
+.room-card p {
+    margin: 0 0 5px;
+
+    font-size: 10px;
+
+    color: #64748b;
+}
+
+.room-card > span {
+    font-size: 9px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   DOCTOR NOTES
+========================================================= */
+
+.notes-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 16px;
+}
+
+.note-card {
+    display: flex;
+
+    gap: 13px;
+
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 11px;
+
+    padding: 18px;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.note-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 25px rgba(15, 23, 42, 0.06);
+}
+
+.note-icon {
+    width: 40px;
+    height: 40px;
+
+    min-width: 40px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: #f5f3ff;
+
+    color: #7c3aed;
+}
+
+.note-card h3 {
+    margin: 0;
+
+    font-size: 12px;
+
+    color: #1e293b;
+}
+
+.note-card p {
+    margin: 9px 0;
+
+    font-size: 10px;
+
+    line-height: 1.6;
+
+    color: #64748b;
+}
+
+.note-card span {
+    font-size: 9px;
+
+    color: #94a3b8;
+}
+
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+
+.settings-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 15px;
+}
+
+.setting-item {
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+
+    padding: 18px;
+
+    background: #ffffff;
+
+    border: 1px solid #e7ebf2;
+
+    border-radius: 11px;
+
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.setting-item:hover {
+    border-color: #dbeafe;
+
+    transform: translateY(-1px);
+}
+
+.setting-icon {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: #eff6ff;
+
+    color: #2563eb;
+}
+
+.setting-item strong {
+    display: block;
+
+    font-size: 11px;
+
+    color: #1e293b;
+}
+
+.setting-item span {
+    display: block;
+
+    margin-top: 4px;
+
+    font-size: 9px;
+
+    color: #94a3b8;
+}
+
+.system-online {
+    color: #16a34a !important;
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   SELECTED BRANCH LABEL
+========================================================= */
+
+.selected-branch-label {
+    margin: -8px 0 18px;
+
+    font-size: 10px;
+
+    color: #94a3b8;
+}
+
+.selected-branch-label strong {
+    margin-left: 4px;
+
+    color: #2563eb;
+}
+
+
+/* =========================================================
+   IOT TABLE - EXTRA WIDTH
+========================================================= */
+
+.data-card .table-wrapper table {
+    min-width: 900px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1200px) {
+
+    .room-grid {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 950px) {
+
+    .branch-page-grid,
+    .notes-grid,
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .room-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 700px) {
+
+    .page-section-header {
+        flex-direction: column;
+    }
+
+    .page-stat-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .room-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .table-wrapper {
+        border-radius: 0;
+    }
+
+}

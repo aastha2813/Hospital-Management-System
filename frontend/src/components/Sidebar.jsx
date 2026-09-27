@@ -61,12 +61,12 @@ function Sidebar({ currentPage, onPageChange }) {
             icon: CreditCard
         },
         {
-            id: "doctor-notes",
+            id: "doctorNotes",
             label: "Doctor Notes",
             icon: FileText
         },
         {
-            id: "iot-vitals",
+            id: "vitals",
             label: "IoT Vitals",
             icon: Activity
         }

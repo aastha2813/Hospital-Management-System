@@ -214,7 +214,8 @@ export const makePayment = (
         paymentData
     );
 
-    // =====================================================
+
+// =====================================================
 // CREATE DOCTOR
 // =====================================================
 
@@ -224,4 +225,33 @@ export const createDoctor = (
     post(
         "/doctors",
         doctorData
+    );
+
+
+// =====================================================
+// CREATE ADMISSION
+// =====================================================
+
+export const createAdmission = (
+    admissionData
+) =>
+    post(
+        "/admissions",
+        admissionData
+    );
+
+
+// =====================================================
+// DISCHARGE PATIENT
+// =====================================================
+
+export const dischargePatient = (
+    admissionId,
+    dischargeDate
+) =>
+    post(
+        `/admissions/${admissionId}/discharge`,
+        {
+            discharge_date: dischargeDate
+        }
     );

@@ -38,7 +38,10 @@ import {
     getBills,
     getDoctorNotes,
     getVitals,
-    createDoctor
+    createDoctor,
+    createAppointment,
+    createAdmission,
+    dischargePatient
 } from "./services/api";
 
 
@@ -111,6 +114,47 @@ const [doctorForm, setDoctorForm] = useState({
 const [addingDoctor, setAddingDoctor] = useState(false);
 const [doctorFormError, setDoctorFormError] = useState("");
 const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
+
+
+    // =====================================================
+    // APPOINTMENT MODAL
+    // =====================================================
+
+    const [addAppointmentOpen, setAddAppointmentOpen] = useState(false);
+
+    const [appointmentForm, setAppointmentForm] = useState({
+        patient_id: "",
+        doctor_id: "",
+        date: new Date().toISOString().split("T")[0],
+        time: "",
+        reason: "",
+        appointment_type: "Consultation"
+    });
+
+    const [addingAppointment, setAddingAppointment] = useState(false);
+    const [appointmentFormError, setAppointmentFormError] = useState("");
+    const [appointmentFormSuccess, setAppointmentFormSuccess] = useState("");
+
+
+    // =====================================================
+    // ADMISSION MODAL
+    // =====================================================
+
+    const [addAdmissionOpen, setAddAdmissionOpen] = useState(false);
+
+    const [admissionForm, setAdmissionForm] = useState({
+        patient_id: "",
+        doctor_id: "",
+        appointment_id: "",
+        room_id: "",
+        admit_date: new Date().toISOString().split("T")[0],
+        type: "Inpatient"
+    });
+
+    const [addingAdmission, setAddingAdmission] = useState(false);
+    const [admissionFormError, setAdmissionFormError] = useState("");
+    const [admissionFormSuccess, setAdmissionFormSuccess] = useState("");
+    const [dischargingAdmissionId, setDischargingAdmissionId] = useState(null);
 
 
     // =====================================================
@@ -460,6 +504,582 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
             );
         } finally {
             setAddingDoctor(false);
+        }
+
+    };
+
+
+
+    // =====================================================
+    // APPOINTMENT HANDLERS
+    // =====================================================
+
+    const findDoctorForProblem = (
+        problemText,
+        patientId
+    ) => {
+
+        if (!problemText || !patientId) {
+            return null;
+        }
+
+        const patient =
+            patients.find(
+                (item) =>
+                    Number(item.patient_id) ===
+                    Number(patientId)
+            );
+
+        if (!patient) {
+            return null;
+        }
+
+        const text =
+            problemText
+                .toLowerCase()
+                .trim();
+
+        let specialization = "General Medicine";
+
+        if (
+            /chest|heart|cardiac|palpitation|blood pressure|hypertension|breathing problem|shortness of breath/.test(text)
+        ) {
+            specialization = "Cardiology";
+        } else if (
+            /headache|migraine|dizziness|seizure|vertigo|memory|neurological|numbness/.test(text)
+        ) {
+            specialization = "Neurology";
+        } else if (
+            /bone|joint|knee|back pain|fracture|shoulder|arthritis|muscle|sprain|leg pain/.test(text)
+        ) {
+            specialization = "Orthopedics";
+        } else if (
+            /child|baby|infant|pediatric|paediatric|kid/.test(text)
+        ) {
+            specialization = "Pediatrics";
+        } else if (
+            /accident|severe injury|trauma|bleeding|unconscious|emergency/.test(text)
+        ) {
+            specialization = "Emergency Medicine";
+        }
+
+        const branchDoctors =
+            doctors.filter(
+                (doctor) =>
+                    Number(doctor.branch_id) ===
+                    Number(patient.branch_id)
+            );
+
+        const matchedDoctor =
+            branchDoctors.find(
+                (doctor) =>
+                    String(
+                        doctor.specialization || ""
+                    ).toLowerCase() ===
+                    specialization.toLowerCase()
+            );
+
+        return (
+            matchedDoctor ||
+            branchDoctors.find(
+                (doctor) =>
+                    String(
+                        doctor.specialization || ""
+                    ).toLowerCase() ===
+                    "general medicine"
+            ) ||
+            branchDoctors[0] ||
+            null
+        );
+
+    };
+
+
+    const handleAppointmentFormChange = (event) => {
+
+        const {
+            name,
+            value
+        } = event.target;
+
+        setAppointmentForm((previous) => {
+
+            const next = {
+                ...previous,
+                [name]: value
+            };
+
+            if (
+                name === "patient_id" ||
+                name === "reason"
+            ) {
+
+                const patientId =
+                    name === "patient_id"
+                        ? value
+                        : previous.patient_id;
+
+                const reason =
+                    name === "reason"
+                        ? value
+                        : previous.reason;
+
+                const doctor =
+                    findDoctorForProblem(
+                        reason,
+                        patientId
+                    );
+
+                next.doctor_id =
+                    doctor
+                        ? String(doctor.doctor_id)
+                        : "";
+
+            }
+
+            return next;
+
+        });
+
+        setAppointmentFormError("");
+        setAppointmentFormSuccess("");
+
+    };
+
+
+    const resetAppointmentForm = () => {
+
+        setAppointmentForm({
+            patient_id: "",
+            doctor_id: "",
+            date: new Date()
+                .toISOString()
+                .split("T")[0],
+            time: "",
+            reason: "",
+            appointment_type: "Consultation"
+        });
+
+        setAppointmentFormError("");
+        setAppointmentFormSuccess("");
+
+    };
+
+
+    const handleAddAppointment = async (event) => {
+
+        event.preventDefault();
+
+        if (
+            !appointmentForm.patient_id ||
+            !appointmentForm.doctor_id ||
+            !appointmentForm.date ||
+            !appointmentForm.time ||
+            !appointmentForm.reason.trim() ||
+            !appointmentForm.appointment_type
+        ) {
+
+            setAppointmentFormError(
+                "Please enter the patient's problem and complete all required fields."
+            );
+
+            return;
+
+        }
+
+        const selectedPatient =
+            patients.find(
+                (patient) =>
+                    Number(patient.patient_id) ===
+                    Number(appointmentForm.patient_id)
+            );
+
+        const selectedDoctor =
+            doctors.find(
+                (doctor) =>
+                    Number(doctor.doctor_id) ===
+                    Number(appointmentForm.doctor_id)
+            );
+
+        if (!selectedPatient || !selectedDoctor) {
+
+            setAppointmentFormError(
+                "Unable to automatically assign a doctor for this patient."
+            );
+
+            return;
+
+        }
+
+        if (
+            Number(selectedPatient.branch_id) !==
+            Number(selectedDoctor.branch_id)
+        ) {
+
+            setAppointmentFormError(
+                "The assigned doctor must belong to the patient's branch."
+            );
+
+            return;
+
+        }
+
+        try {
+
+            setAddingAppointment(true);
+            setAppointmentFormError("");
+            setAppointmentFormSuccess("");
+
+            await createAppointment({
+
+                patient_id:
+                    Number(
+                        appointmentForm.patient_id
+                    ),
+
+                doctor_id:
+                    Number(
+                        appointmentForm.doctor_id
+                    ),
+
+                date:
+                    appointmentForm.date,
+
+                time:
+                    appointmentForm.time,
+
+                reason:
+                    appointmentForm.reason.trim(),
+
+                appointment_type:
+                    appointmentForm.appointment_type
+
+            });
+
+            const currentBranchId =
+                selectedBranch === "all"
+                    ? null
+                    : Number(selectedBranch);
+
+            const updatedAppointments =
+                await getAppointments(
+                    currentBranchId
+                );
+
+            setAppointments(
+                updatedAppointments
+            );
+
+            setAppointmentFormSuccess(
+                `Appointment booked. ${selectedDoctor.first_name ? `Dr. ${selectedDoctor.first_name} ${selectedDoctor.last_name || ""}` : `Doctor #${selectedDoctor.doctor_id}`} (${selectedDoctor.specialization}) has been assigned.`
+            );
+
+            setAppointmentForm({
+                patient_id: "",
+                doctor_id: "",
+                date: new Date()
+                    .toISOString()
+                    .split("T")[0],
+                time: "",
+                reason: "",
+                appointment_type: "Consultation"
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Book Appointment Error:",
+                error
+            );
+
+            setAppointmentFormError(
+                error.message ||
+                "Failed to book appointment."
+            );
+
+        } finally {
+
+            setAddingAppointment(false);
+
+        }
+
+    };
+
+
+    // =====================================================
+    // ADMISSION HANDLERS
+    // =====================================================
+
+    const handleAdmissionFormChange = (event) => {
+
+        const {
+            name,
+            value
+        } = event.target;
+
+        setAdmissionForm((previous) => ({
+            ...previous,
+            [name]: value
+        }));
+
+        setAdmissionFormError("");
+        setAdmissionFormSuccess("");
+    };
+
+
+    const resetAdmissionForm = () => {
+
+        setAdmissionForm({
+            patient_id: "",
+            doctor_id: "",
+            appointment_id: "",
+            room_id: "",
+            admit_date: new Date().toISOString().split("T")[0],
+            type: "Inpatient"
+        });
+
+        setAdmissionFormError("");
+        setAdmissionFormSuccess("");
+    };
+
+
+    const handleAddAdmission = async (event) => {
+
+        event.preventDefault();
+
+        if (
+            !admissionForm.patient_id ||
+            !admissionForm.doctor_id ||
+            !admissionForm.appointment_id ||
+            !admissionForm.room_id ||
+            !admissionForm.admit_date ||
+            !admissionForm.type
+        ) {
+            setAdmissionFormError(
+                "Please fill all required fields."
+            );
+            return;
+        }
+
+        const selectedPatient =
+            patients.find(
+                (patient) =>
+                    Number(patient.patient_id) ===
+                    Number(admissionForm.patient_id)
+            );
+
+        const selectedDoctor =
+            doctors.find(
+                (doctor) =>
+                    Number(doctor.doctor_id) ===
+                    Number(admissionForm.doctor_id)
+            );
+
+        const selectedRoom =
+            rooms.find(
+                (room) =>
+                    Number(room.room_id) ===
+                    Number(admissionForm.room_id)
+            );
+
+        const selectedAppointment =
+            appointments.find(
+                (appointment) =>
+                    Number(appointment.appointment_id) ===
+                    Number(admissionForm.appointment_id)
+            );
+
+        if (
+            !selectedPatient ||
+            !selectedDoctor ||
+            !selectedRoom ||
+            !selectedAppointment
+        ) {
+            setAdmissionFormError(
+                "A valid patient, recent appointment, doctor and vacant room are required."
+            );
+            return;
+        }
+
+        if (
+            Number(selectedAppointment.patient_id) !==
+            Number(selectedPatient.patient_id)
+        ) {
+            setAdmissionFormError(
+                "The selected appointment does not belong to this patient."
+            );
+            return;
+        }
+
+        if (
+            Number(selectedAppointment.doctor_id) !==
+            Number(selectedDoctor.doctor_id)
+        ) {
+            setAdmissionFormError(
+                "The attending doctor must match the patient's appointment."
+            );
+            return;
+        }
+
+        if (
+            Number(selectedPatient.branch_id) !==
+            Number(selectedDoctor.branch_id)
+        ) {
+            setAdmissionFormError(
+                "Patient and doctor must belong to the same branch."
+            );
+            return;
+        }
+
+        if (
+            Number(selectedPatient.branch_id) !==
+            Number(selectedRoom.branch_id)
+        ) {
+            setAdmissionFormError(
+                "Patient and room must belong to the same branch."
+            );
+            return;
+        }
+
+        if (
+            selectedRoom.status &&
+            selectedRoom.status.toLowerCase() !== "vacant"
+        ) {
+            setAdmissionFormError(
+                "Selected room is not vacant."
+            );
+            return;
+        }
+
+        try {
+
+            setAddingAdmission(true);
+            setAdmissionFormError("");
+            setAdmissionFormSuccess("");
+
+            await createAdmission({
+                patient_id:
+                    Number(admissionForm.patient_id),
+
+                doctor_id:
+                    Number(admissionForm.doctor_id),
+
+                appointment_id:
+                    admissionForm.appointment_id
+                        ? Number(admissionForm.appointment_id)
+                        : null,
+
+                room_id:
+                    Number(admissionForm.room_id),
+
+                admit_date:
+                    admissionForm.admit_date,
+
+                type:
+                    admissionForm.type
+            });
+
+            const currentBranchId =
+                selectedBranch === "all"
+                    ? null
+                    : Number(selectedBranch);
+
+            const [
+                updatedAdmissions,
+                updatedRooms
+            ] = await Promise.all([
+                getAdmissions(currentBranchId),
+                getRooms(currentBranchId)
+            ]);
+
+            setAdmissions(updatedAdmissions);
+            setRooms(updatedRooms);
+
+            const admittedPatientId =
+                admissionForm.patient_id;
+
+            resetAdmissionForm();
+
+            setAdmissionFormSuccess(
+                `Patient P${admittedPatientId} admitted successfully.`
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Add Admission Error:",
+                error
+            );
+
+            setAdmissionFormError(
+                error.message ||
+                "Failed to admit patient."
+            );
+
+        } finally {
+
+            setAddingAdmission(false);
+
+        }
+
+    };
+
+
+    const handleDischargePatient = async (admissionId) => {
+
+        const confirmed =
+            window.confirm(
+                `Are you sure you want to discharge Admission #${admissionId}?`
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+
+            setDischargingAdmissionId(admissionId);
+
+            const today =
+                new Date().toISOString().split("T")[0];
+
+            await dischargePatient(
+                admissionId,
+                today
+            );
+
+            const currentBranchId =
+                selectedBranch === "all"
+                    ? null
+                    : Number(selectedBranch);
+
+            const [
+                updatedAdmissions,
+                updatedRooms
+            ] = await Promise.all([
+                getAdmissions(currentBranchId),
+                getRooms(currentBranchId)
+            ]);
+
+            setAdmissions(updatedAdmissions);
+            setRooms(updatedRooms);
+
+        } catch (error) {
+
+            console.error(
+                "Discharge Patient Error:",
+                error
+            );
+
+            window.alert(
+                error.message ||
+                "Failed to discharge patient."
+            );
+
+        } finally {
+
+            setDischargingAdmissionId(null);
+
         }
 
     };
@@ -1061,7 +1681,17 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                             setAddDoctorOpen(true);
                                         }
-                                        : undefined
+                                        : title === "Admissions"
+                                            ? () => {
+                                                resetAdmissionForm();
+                                                setAddAdmissionOpen(true);
+                                            }
+                                            : title === "Appointments"
+                                                ? () => {
+                                                    resetAppointmentForm();
+                                                    setAddAppointmentOpen(true);
+                                                }
+                                                : undefined
                             }
                         >
                             {actionText}
@@ -1715,7 +2345,8 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                 {renderPageHeader(
                     "Admissions",
-                    `${admissionCount} admissions in ${selectedBranchName}`
+                    `${admissionCount} admissions in ${selectedBranchName}`,
+                    "Admit Patient"
                 )}
 
 
@@ -1769,6 +2400,10 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                         <th>
                                             Status
+                                        </th>
+
+                                        <th>
+                                            Action
                                         </th>
 
                                     </tr>
@@ -1850,6 +2485,63 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             "Active"
                                                         }
                                                     </span>
+
+                                                </td>
+
+                                                <td>
+
+                                                    {admission.status?.toLowerCase() !==
+                                                        "discharged" ? (
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleDischargePatient(
+                                                                    admission.admission_id
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                dischargingAdmissionId ===
+                                                                admission.admission_id
+                                                            }
+                                                            style={{
+                                                                padding: "7px 12px",
+                                                                border: "1px solid #fecaca",
+                                                                background: "#fff1f2",
+                                                                color: "#be123c",
+                                                                borderRadius: "8px",
+                                                                fontSize: "12px",
+                                                                fontWeight: 600,
+                                                                cursor:
+                                                                    dischargingAdmissionId ===
+                                                                    admission.admission_id
+                                                                        ? "not-allowed"
+                                                                        : "pointer",
+                                                                opacity:
+                                                                    dischargingAdmissionId ===
+                                                                    admission.admission_id
+                                                                        ? 0.6
+                                                                        : 1
+                                                            }}
+                                                        >
+                                                            {dischargingAdmissionId ===
+                                                            admission.admission_id
+                                                                ? "Discharging..."
+                                                                : "Discharge"}
+                                                        </button>
+
+                                                    ) : (
+
+                                                        <span
+                                                            style={{
+                                                                color: "#94a3b8",
+                                                                fontSize: "12px"
+                                                            }}
+                                                        >
+                                                            Completed
+                                                        </span>
+
+                                                    )}
 
                                                 </td>
 
@@ -3512,6 +4204,1213 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
             </main>
 
 
+            {addAppointmentOpen && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(15, 23, 42, 0.48)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "24px",
+                        zIndex: 1000
+                    }}
+                    onMouseDown={(event) => {
+                        if (
+                            event.target === event.currentTarget &&
+                            !addingAppointment
+                        ) {
+                            setAddAppointmentOpen(false);
+                        }
+                    }}
+                >
+                    <div
+                        style={{
+                            width: "100%",
+                            maxWidth: "620px",
+                            maxHeight: "90vh",
+                            overflowY: "auto",
+                            background: "#ffffff",
+                            borderRadius: "16px",
+                            boxShadow:
+                                "0 24px 70px rgba(15, 23, 42, 0.25)",
+                            padding: "26px"
+                        }}
+                        onMouseDown={(event) =>
+                            event.stopPropagation()
+                        }
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                marginBottom: "20px"
+                            }}
+                        >
+                            <div>
+                                <h2
+                                    style={{
+                                        margin: 0,
+                                        color: "#0f172a",
+                                        fontSize: "22px"
+                                    }}
+                                >
+                                    Book Appointment
+                                </h2>
+
+                                <p
+                                    style={{
+                                        margin: "6px 0 0",
+                                        color: "#64748b",
+                                        fontSize: "13px"
+                                    }}
+                                >
+                                    Briefly describe the patient's problem.
+                                    The system will assign a suitable doctor.
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    !addingAppointment &&
+                                    setAddAppointmentOpen(false)
+                                }
+                                disabled={addingAppointment}
+                                style={{
+                                    border: "none",
+                                    background: "#f1f5f9",
+                                    color: "#475569",
+                                    width: "36px",
+                                    height: "36px",
+                                    borderRadius: "9px",
+                                    fontSize: "21px",
+                                    cursor: addingAppointment
+                                        ? "not-allowed"
+                                        : "pointer"
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {appointmentFormError && (
+                            <div
+                                style={{
+                                    marginBottom: "14px",
+                                    padding: "11px 13px",
+                                    background: "#fef2f2",
+                                    border: "1px solid #fecaca",
+                                    borderRadius: "9px",
+                                    color: "#b91c1c",
+                                    fontSize: "13px"
+                                }}
+                            >
+                                {appointmentFormError}
+                            </div>
+                        )}
+
+                        {appointmentFormSuccess && (
+                            <div
+                                style={{
+                                    marginBottom: "14px",
+                                    padding: "11px 13px",
+                                    background: "#f0fdf4",
+                                    border: "1px solid #bbf7d0",
+                                    borderRadius: "9px",
+                                    color: "#15803d",
+                                    fontSize: "13px"
+                                }}
+                            >
+                                {appointmentFormSuccess}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleAddAppointment}>
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                        "repeat(2, minmax(0, 1fr))",
+                                    gap: "16px"
+                                }}
+                            >
+                                <div>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            color: "#334155",
+                                            fontSize: "13px",
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Patient *
+                                    </label>
+
+                                    <select
+                                        name="patient_id"
+                                        value={
+                                            appointmentForm.patient_id
+                                        }
+                                        onChange={
+                                            handleAppointmentFormChange
+                                        }
+                                        disabled={addingAppointment}
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            background: "#ffffff",
+                                            color: "#0f172a"
+                                        }}
+                                    >
+                                        <option value="">
+                                            Select patient
+                                        </option>
+
+                                        {patients.map(
+                                            (patient) => (
+                                                <option
+                                                    key={
+                                                        patient.patient_id
+                                                    }
+                                                    value={
+                                                        patient.patient_id
+                                                    }
+                                                >
+                                                    Patient #
+                                                    {
+                                                        patient.patient_id
+                                                    }
+                                                    {" — "}
+                                                    {
+                                                        patient.first_name ||
+                                                        ""
+                                                    }
+                                                    {" "}
+                                                    {
+                                                        patient.last_name ||
+                                                        ""
+                                                    }
+                                                </option>
+                                            )
+                                        )}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            color: "#334155",
+                                            fontSize: "13px",
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Problem *
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        name="reason"
+                                        value={
+                                            appointmentForm.reason
+                                        }
+                                        onChange={
+                                            handleAppointmentFormChange
+                                        }
+                                        disabled={addingAppointment}
+                                        required
+                                        placeholder="e.g. severe headache and dizziness"
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            background: "#ffffff",
+                                            color: "#0f172a"
+                                        }}
+                                    />
+                                </div>
+
+                                <div
+                                    style={{
+                                        gridColumn: "1 / -1"
+                                    }}
+                                >
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            color: "#334155",
+                                            fontSize: "13px",
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Automatically Assigned Doctor
+                                    </label>
+
+                                    <div
+                                        style={{
+                                            padding: "13px 14px",
+                                            border: "1px solid #bfdbfe",
+                                            borderRadius: "9px",
+                                            background: "#eff6ff",
+                                            color: "#1e3a8a",
+                                            minHeight: "48px",
+                                            display: "flex",
+                                            alignItems: "center"
+                                        }}
+                                    >
+                                        {appointmentForm.doctor_id
+                                            ? (() => {
+                                                const doctor =
+                                                    doctors.find(
+                                                        (item) =>
+                                                            Number(
+                                                                item.doctor_id
+                                                            ) ===
+                                                            Number(
+                                                                appointmentForm.doctor_id
+                                                            )
+                                                    );
+
+                                                return doctor
+                                                    ? `Dr. ${doctor.first_name || ""} ${doctor.last_name || ""} — ${doctor.specialization}`
+                                                    : "No suitable doctor found";
+                                            })()
+                                            : appointmentForm.patient_id &&
+                                              appointmentForm.reason
+                                                ? "No suitable doctor found"
+                                                : "Enter the patient's problem to assign a doctor"}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            color: "#334155",
+                                            fontSize: "13px",
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Date *
+                                    </label>
+
+                                    <input
+                                        type="date"
+                                        name="date"
+                                        value={
+                                            appointmentForm.date
+                                        }
+                                        onChange={
+                                            handleAppointmentFormChange
+                                        }
+                                        disabled={addingAppointment}
+                                        required
+                                        min={
+                                            new Date()
+                                                .toISOString()
+                                                .split("T")[0]
+                                        }
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            background: "#ffffff",
+                                            color: "#0f172a"
+                                        }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            color: "#334155",
+                                            fontSize: "13px",
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Time *
+                                    </label>
+
+                                    <input
+                                        type="time"
+                                        name="time"
+                                        value={
+                                            appointmentForm.time
+                                        }
+                                        onChange={
+                                            handleAppointmentFormChange
+                                        }
+                                        disabled={addingAppointment}
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            background: "#ffffff",
+                                            color: "#0f172a"
+                                        }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            color: "#334155",
+                                            fontSize: "13px",
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Appointment Type *
+                                    </label>
+
+                                    <select
+                                        name="appointment_type"
+                                        value={
+                                            appointmentForm.appointment_type
+                                        }
+                                        onChange={
+                                            handleAppointmentFormChange
+                                        }
+                                        disabled={addingAppointment}
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            background: "#ffffff",
+                                            color: "#0f172a"
+                                        }}
+                                    >
+                                        <option value="Consultation">
+                                            Consultation
+                                        </option>
+                                        <option value="Follow-up">
+                                            Follow-up
+                                        </option>
+                                        <option value="Emergency">
+                                            Emergency
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div
+                                style={{
+                                    marginTop: "22px",
+                                    paddingTop: "18px",
+                                    borderTop:
+                                        "1px solid #e2e8f0",
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    gap: "10px"
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        !addingAppointment &&
+                                        setAddAppointmentOpen(false)
+                                    }
+                                    disabled={addingAppointment}
+                                    style={{
+                                        padding: "11px 18px",
+                                        borderRadius: "9px",
+                                        border:
+                                            "1px solid #dbe3ef",
+                                        background: "#ffffff",
+                                        color: "#475569",
+                                        fontWeight: 600,
+                                        cursor: addingAppointment
+                                            ? "not-allowed"
+                                            : "pointer"
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    disabled={
+                                        addingAppointment ||
+                                        !appointmentForm.doctor_id
+                                    }
+                                    style={{
+                                        padding: "11px 20px",
+                                        borderRadius: "9px",
+                                        border: "none",
+                                        background: "#2563eb",
+                                        color: "#ffffff",
+                                        fontWeight: 600,
+                                        cursor:
+                                            addingAppointment ||
+                                            !appointmentForm.doctor_id
+                                                ? "not-allowed"
+                                                : "pointer",
+                                        opacity:
+                                            addingAppointment ||
+                                            !appointmentForm.doctor_id
+                                                ? 0.7
+                                                : 1
+                                    }}
+                                >
+                                    {addingAppointment
+                                        ? "Booking..."
+                                        : "Book Appointment"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {addAdmissionOpen && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(15, 23, 42, 0.48)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "24px",
+                        zIndex: 1000
+                    }}
+                    onMouseDown={(event) => {
+                        if (
+                            event.target === event.currentTarget &&
+                            !addingAdmission
+                        ) {
+                            setAddAdmissionOpen(false);
+                        }
+                    }}
+                >
+
+                    <div
+                        style={{
+                            width: "min(760px, 100%)",
+                            maxHeight: "90vh",
+                            overflowY: "auto",
+                            background: "#ffffff",
+                            borderRadius: "18px",
+                            boxShadow:
+                                "0 24px 70px rgba(15, 23, 42, 0.25)",
+                            padding: "28px"
+                        }}
+                    >
+
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "22px"
+                            }}
+                        >
+
+                            <div>
+
+                                <h2
+                                    style={{
+                                        margin: 0,
+                                        color: "#0f172a",
+                                        fontSize: "24px"
+                                    }}
+                                >
+                                    Admit Patient
+                                </h2>
+
+                                <p
+                                    style={{
+                                        margin: "6px 0 0",
+                                        color: "#64748b",
+                                        fontSize: "14px"
+                                    }}
+                                >
+                                    Create a new hospital admission
+                                </p>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    !addingAdmission &&
+                                    setAddAdmissionOpen(false)
+                                }
+                                style={{
+                                    border: "none",
+                                    background: "#f1f5f9",
+                                    width: "36px",
+                                    height: "36px",
+                                    borderRadius: "10px",
+                                    fontSize: "22px",
+                                    cursor: "pointer",
+                                    color: "#475569"
+                                }}
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+
+                        {admissionFormError && (
+                            <div
+                                style={{
+                                    background: "#fef2f2",
+                                    color: "#b91c1c",
+                                    border: "1px solid #fecaca",
+                                    padding: "11px 14px",
+                                    borderRadius: "10px",
+                                    marginBottom: "16px",
+                                    fontSize: "14px"
+                                }}
+                            >
+                                {admissionFormError}
+                            </div>
+                        )}
+
+
+                        {admissionFormSuccess && (
+                            <div
+                                style={{
+                                    background: "#f0fdf4",
+                                    color: "#15803d",
+                                    border: "1px solid #bbf7d0",
+                                    padding: "11px 14px",
+                                    borderRadius: "10px",
+                                    marginBottom: "16px",
+                                    fontSize: "14px"
+                                }}
+                            >
+                                {admissionFormSuccess}
+                            </div>
+                        )}
+
+
+                        <form onSubmit={handleAddAdmission}>
+
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                        "repeat(2, minmax(0, 1fr))",
+                                    gap: "16px"
+                                }}
+                            >
+
+                                {/* PATIENT */}
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Patient *
+                                    </label>
+
+                                    <select
+                                        name="patient_id"
+                                        value={admissionForm.patient_id}
+                                        onChange={(event) => {
+
+                                            const patientId =
+                                                event.target.value;
+
+                                            const patientAppointments =
+                                                appointments
+                                                    .filter(
+                                                        (appointment) =>
+                                                            Number(
+                                                                appointment.patient_id
+                                                            ) ===
+                                                            Number(patientId) &&
+                                                            (appointment.status || "")
+                                                                .toLowerCase() !==
+                                                            "cancelled"
+                                                    )
+                                                    .sort((a, b) => {
+
+                                                        const aDate =
+                                                            `${a.date || ""} ${a.time || ""}`;
+
+                                                        const bDate =
+                                                            `${b.date || ""} ${b.time || ""}`;
+
+                                                        return (
+                                                            new Date(bDate) -
+                                                            new Date(aDate)
+                                                        );
+
+                                                    });
+
+                                            const latestAppointment =
+                                                patientAppointments[0] || null;
+
+                                            setAdmissionForm(
+                                                (previous) => ({
+                                                    ...previous,
+                                                    patient_id:
+                                                        patientId,
+                                                    doctor_id:
+                                                        latestAppointment
+                                                            ? String(
+                                                                latestAppointment.doctor_id
+                                                            )
+                                                            : "",
+                                                    room_id: "",
+                                                    appointment_id:
+                                                        latestAppointment
+                                                            ? String(
+                                                                latestAppointment.appointment_id
+                                                            )
+                                                            : ""
+                                                })
+                                            );
+
+                                            setAdmissionFormError("");
+                                            setAdmissionFormSuccess("");
+
+                                        }}
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            outline: "none",
+                                            fontSize: "14px",
+                                            color: "#0f172a",
+                                            background: "#ffffff"
+                                        }}
+                                    >
+
+                                        <option value="">
+                                            Select Patient
+                                        </option>
+
+                                        {patients.map(
+                                            (patient) => (
+                                                <option
+                                                    key={
+                                                        patient.patient_id
+                                                    }
+                                                    value={
+                                                        patient.patient_id
+                                                    }
+                                                >
+                                                    P{patient.patient_id} —{" "}
+                                                    {patient.first_name}{" "}
+                                                    {patient.last_name || ""}
+                                                </option>
+                                            )
+                                        )}
+
+                                    </select>
+
+                                </div>
+
+
+                                {/* DOCTOR */}
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Attending Doctor *
+                                    </label>
+
+                                    <select
+                                        name="doctor_id"
+                                        value={admissionForm.doctor_id}
+                                        onChange={handleAdmissionFormChange}
+                                        required
+                                        disabled={!admissionForm.patient_id || !!admissionForm.appointment_id}
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            outline: "none",
+                                            fontSize: "14px",
+                                            color: "#0f172a",
+                                            background: "#ffffff"
+                                        }}
+                                    >
+
+                                        <option value="">
+                                            {admissionForm.patient_id
+                                                ? "No appointment found"
+                                                : "Select Patient First"}
+                                        </option>
+
+                                        {doctors
+                                            .filter((doctor) => {
+
+                                                const patient =
+                                                    patients.find(
+                                                        (item) =>
+                                                            Number(
+                                                                item.patient_id
+                                                            ) ===
+                                                            Number(
+                                                                admissionForm.patient_id
+                                                            )
+                                                    );
+
+                                                return (
+                                                    patient &&
+                                                    Number(
+                                                        doctor.branch_id
+                                                    ) ===
+                                                    Number(
+                                                        patient.branch_id
+                                                    )
+                                                );
+
+                                            })
+                                            .map(
+                                                (doctor) => (
+                                                    <option
+                                                        key={
+                                                            doctor.doctor_id
+                                                        }
+                                                        value={
+                                                            doctor.doctor_id
+                                                        }
+                                                    >
+                                                        D{doctor.doctor_id} —{" "}
+                                                        Dr.{" "}
+                                                        {doctor.first_name}{" "}
+                                                        {doctor.last_name || ""}
+                                                    </option>
+                                                )
+                                            )}
+
+                                    </select>
+
+                                </div>
+
+
+                                {/* ROOM */}
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Room *
+                                    </label>
+
+                                    <select
+                                        name="room_id"
+                                        value={admissionForm.room_id}
+                                        onChange={handleAdmissionFormChange}
+                                        required
+                                        disabled={!admissionForm.patient_id}
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            outline: "none",
+                                            fontSize: "14px",
+                                            color: "#0f172a",
+                                            background: "#ffffff"
+                                        }}
+                                    >
+
+                                        <option value="">
+                                            {admissionForm.patient_id
+                                                ? "Select Available Room"
+                                                : "Select Patient First"}
+                                        </option>
+
+                                        {rooms
+                                            .filter((room) => {
+
+                                                const patient =
+                                                    patients.find(
+                                                        (item) =>
+                                                            Number(
+                                                                item.patient_id
+                                                            ) ===
+                                                            Number(
+                                                                admissionForm.patient_id
+                                                            )
+                                                    );
+
+                                                return (
+                                                    patient &&
+                                                    Number(
+                                                        room.branch_id
+                                                    ) ===
+                                                    Number(
+                                                        patient.branch_id
+                                                    ) &&
+                                                    room.status?.toLowerCase() ===
+                                                    "vacant"
+                                                );
+
+                                            })
+                                            .map(
+                                                (room) => (
+                                                    <option
+                                                        key={
+                                                            room.room_id
+                                                        }
+                                                        value={
+                                                            room.room_id
+                                                        }
+                                                    >
+                                                        Room {room.room_id} —{" "}
+                                                        {room.room_type ||
+                                                            "General"}{" "}
+                                                        — Floor{" "}
+                                                        {room.floor_no ??
+                                                            "—"}
+                                                    </option>
+                                                )
+                                            )}
+
+                                    </select>
+
+                                </div>
+
+
+                                {/* ADMISSION DATE */}
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Admit Date *
+                                    </label>
+
+                                    <input
+                                        type="date"
+                                        name="admit_date"
+                                        value={admissionForm.admit_date}
+                                        onChange={handleAdmissionFormChange}
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            outline: "none",
+                                            fontSize: "14px",
+                                            color: "#0f172a"
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* ADMISSION TYPE */}
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Admission Type *
+                                    </label>
+
+                                    <select
+                                        name="type"
+                                        value={admissionForm.type}
+                                        onChange={handleAdmissionFormChange}
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            boxSizing: "border-box",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            outline: "none",
+                                            fontSize: "14px",
+                                            color: "#0f172a",
+                                            background: "#ffffff"
+                                        }}
+                                    >
+
+                                        <option value="Inpatient">
+                                            Inpatient
+                                        </option>
+
+                                        <option value="Emergency">
+                                            Emergency
+                                        </option>
+
+                                        <option value="Surgery">
+                                            Surgery
+                                        </option>
+
+                                        <option value="Observation">
+                                            Observation
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+
+                                {/* RECENT APPOINTMENT */}
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Recent Appointment *
+                                    </label>
+
+                                    {(() => {
+
+                                        const patientAppointments =
+                                            appointments
+                                                .filter(
+                                                    (appointment) =>
+                                                        Number(
+                                                            appointment.patient_id
+                                                        ) ===
+                                                        Number(
+                                                            admissionForm.patient_id
+                                                        ) &&
+                                                        (appointment.status || "")
+                                                            .toLowerCase() !==
+                                                        "cancelled"
+                                                )
+                                                .sort((a, b) => {
+
+                                                    const aDate =
+                                                        `${a.date || ""} ${a.time || ""}`;
+
+                                                    const bDate =
+                                                        `${b.date || ""} ${b.time || ""}`;
+
+                                                    return (
+                                                        new Date(bDate) -
+                                                        new Date(aDate)
+                                                    );
+
+                                                });
+
+                                        const latestAppointment =
+                                            patientAppointments[0];
+
+                                        return (
+
+                                            <div
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    minHeight: "44px",
+                                                    padding: "11px 12px",
+                                                    border: "1px solid #dbe3ef",
+                                                    borderRadius: "9px",
+                                                    background: "#f8fafc",
+                                                    color: latestAppointment
+                                                        ? "#0f172a"
+                                                        : "#64748b",
+                                                    fontSize: "14px",
+                                                    display: "flex",
+                                                    alignItems: "center"
+                                                }}
+                                            >
+                                                {latestAppointment
+                                                    ? `A${latestAppointment.appointment_id} — ${
+                                                        latestAppointment.date
+                                                            ? new Date(
+                                                                latestAppointment.date
+                                                            ).toLocaleDateString()
+                                                            : "No Date"
+                                                    } — Dr. ${
+                                                        latestAppointment.doctor_id
+                                                    } — ${
+                                                        latestAppointment.status ||
+                                                        "Appointment"
+                                                    }`
+                                                    : admissionForm.patient_id
+                                                        ? "No valid appointment found for this patient"
+                                                        : "Select Patient First"}
+                                            </div>
+
+                                        );
+
+                                    })()}
+
+                                    <p
+                                        style={{
+                                            margin: "6px 0 0",
+                                            color: "#64748b",
+                                            fontSize: "11px"
+                                        }}
+                                    >
+                                        The latest non-cancelled appointment is selected automatically.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+
+                            <div
+                                style={{
+                                    marginTop: "14px",
+                                    padding: "11px 13px",
+                                    background: "#f8fafc",
+                                    border: "1px solid #e2e8f0",
+                                    borderRadius: "9px",
+                                    color: "#64748b",
+                                    fontSize: "12px"
+                                }}
+                            >
+                                Room status is updated by the PostgreSQL
+                                admission trigger after successful admission.
+                            </div>
+
+
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    gap: "10px",
+                                    marginTop: "24px",
+                                    paddingTop: "18px",
+                                    borderTop: "1px solid #e2e8f0"
+                                }}
+                            >
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        !addingAdmission &&
+                                        setAddAdmissionOpen(false)
+                                    }
+                                    disabled={addingAdmission}
+                                    style={{
+                                        padding: "11px 18px",
+                                        borderRadius: "9px",
+                                        border: "1px solid #dbe3ef",
+                                        background: "#ffffff",
+                                        color: "#475569",
+                                        fontWeight: 600,
+                                        cursor:
+                                            addingAdmission
+                                                ? "not-allowed"
+                                                : "pointer"
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    disabled={
+                                        addingAdmission ||
+                                        !admissionForm.appointment_id
+                                    }
+                                    style={{
+                                        padding: "11px 20px",
+                                        borderRadius: "9px",
+                                        border: "none",
+                                        background: "#2563eb",
+                                        color: "#ffffff",
+                                        fontWeight: 600,
+                                        cursor:
+                                            addingAdmission ||
+                                            !admissionForm.appointment_id
+                                                ? "not-allowed"
+                                                : "pointer",
+                                        opacity:
+                                            addingAdmission ||
+                                            !admissionForm.appointment_id
+                                                ? 0.7
+                                                : 1
+                                    }}
+                                >
+                                    {addingAdmission
+                                        ? "Admitting..."
+                                        : "Admit Patient"}
+                                </button>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </div>
+            )}
+
+
             {addDoctorOpen && (
                 <div
                     style={{
@@ -4085,4 +5984,4 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 }
 
 
-export default App;
+export default App; 

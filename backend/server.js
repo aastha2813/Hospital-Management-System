@@ -1499,6 +1499,177 @@ app.get(
 
 
 // =====================================================
+// CREATE ADMISSION
+// =====================================================
+
+app.post(
+    "/api/admissions",
+    async (req, res) => {
+
+        try {
+
+            const {
+                patient_id,
+                doctor_id,
+                appointment_id,
+                room_id,
+                admit_date,
+                type
+            } = req.body;
+
+
+            // Validate required fields
+            if (
+                !patient_id ||
+                !doctor_id ||
+                !room_id ||
+                !admit_date ||
+                !type
+            ) {
+
+                return res.status(400).json({
+                    error:
+                        "Patient, doctor, room, admit date and admission type are required"
+                });
+
+            }
+
+
+            // Call existing PostgreSQL procedure
+            await pool.query(
+                `
+                CALL AdmitPatient(
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6
+                )
+                `,
+                [
+                    patient_id,
+                    doctor_id,
+                    appointment_id || null,
+                    room_id,
+                    admit_date,
+                    type
+                ]
+            );
+
+
+            res.status(201).json({
+
+                message:
+                    "Patient admitted successfully"
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Error admitting patient:",
+                error.message
+            );
+
+
+            res.status(400).json({
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    }
+);
+
+
+// =====================================================
+// DISCHARGE PATIENT
+// =====================================================
+
+app.post(
+    "/api/admissions/:admission_id/discharge",
+    async (req, res) => {
+
+        try {
+
+            const admissionId =
+                parseInt(req.params.admission_id);
+
+            const {
+                discharge_date
+            } = req.body;
+
+
+            // Validate admission ID
+            if (isNaN(admissionId)) {
+
+                return res.status(400).json({
+                    error:
+                        "Invalid admission ID"
+                });
+
+            }
+
+
+            // Validate discharge date
+            if (!discharge_date) {
+
+                return res.status(400).json({
+                    error:
+                        "Discharge date is required"
+                });
+
+            }
+
+
+            // Call existing PostgreSQL procedure
+            await pool.query(
+                `
+                CALL DischargePatient(
+                    $1,
+                    $2
+                )
+                `,
+                [
+                    admissionId,
+                    discharge_date
+                ]
+            );
+
+
+            res.json({
+
+                message:
+                    "Patient discharged successfully"
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Error discharging patient:",
+                error.message
+            );
+
+
+            res.status(400).json({
+
+                error:
+                    error.message
+
+            });
+
+        }
+
+    }
+);
+
+
+// =====================================================
 // ROOM APIs
 // =====================================================
 

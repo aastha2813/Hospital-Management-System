@@ -428,6 +428,248 @@ app.get(
 );
 
 
+// Create patient
+app.post(
+    "/api/patients",
+    async (req, res) => {
+
+        const client = await pool.connect();
+
+        try {
+
+            const {
+                first_name,
+                last_name,
+                date_of_birth,
+                gender,
+                phone,
+                email,
+                address,
+                blood_group,
+                allergies,
+                insurance_no,
+                dept_id,
+                branch_id
+            } = req.body;
+
+            if (
+                !first_name ||
+                !date_of_birth ||
+                !gender ||
+                !phone ||
+                !branch_id
+            ) {
+                return res.status(400).json({
+                    error:
+                        "First name, date of birth, gender, phone and branch are required"
+                });
+            }
+
+            const parsedBranchId = parseInt(branch_id);
+            const parsedDeptId =
+                dept_id ? parseInt(dept_id) : null;
+
+            if (isNaN(parsedBranchId)) {
+                return res.status(400).json({
+                    error: "Invalid branch ID"
+                });
+            }
+
+            if (dept_id && isNaN(parsedDeptId)) {
+                return res.status(400).json({
+                    error: "Invalid department ID"
+                });
+            }
+
+            const branchResult = await pool.query(
+                `
+                SELECT branch_id
+                FROM HOSPITAL_BRANCH
+                WHERE branch_id = $1
+                `,
+                [parsedBranchId]
+            );
+
+            if (branchResult.rows.length === 0) {
+                return res.status(400).json({
+                    error: "Selected branch does not exist"
+                });
+            }
+
+            if (parsedDeptId !== null) {
+
+                const departmentResult = await pool.query(
+                    `
+                    SELECT dept_id
+                    FROM DEPARTMENT
+                    WHERE dept_id = $1
+                    `,
+                    [parsedDeptId]
+                );
+
+                if (departmentResult.rows.length === 0) {
+                    return res.status(400).json({
+                        error:
+                            "Selected department does not exist"
+                    });
+                }
+            }
+
+            await client.query("BEGIN");
+
+            const personIdResult = await client.query(
+                `
+                SELECT COALESCE(MAX(person_id), 0) + 1
+                AS person_id
+                FROM PERSON
+                `
+            );
+
+            const personId =
+                personIdResult.rows[0].person_id;
+
+            await client.query(
+                `
+                INSERT INTO PERSON (
+                    person_id,
+                    first_name,
+                    last_name,
+                    date_of_birth,
+                    gender,
+                    phone,
+                    email,
+                    address
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8
+                )
+                `,
+                [
+                    personId,
+                    first_name,
+                    last_name || null,
+                    date_of_birth,
+                    gender,
+                    phone,
+                    email || null,
+                    address || null
+                ]
+            );
+
+            const patientIdResult = await client.query(
+                `
+                SELECT COALESCE(MAX(patient_id), 0) + 1
+                AS patient_id
+                FROM PATIENT
+                `
+            );
+
+            const patientId =
+                patientIdResult.rows[0].patient_id;
+
+            await client.query(
+                `
+                INSERT INTO PATIENT (
+                    patient_id,
+                    blood_group,
+                    allergies,
+                    insurance_no,
+                    dept_id,
+                    person_id,
+                    branch_id
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7
+                )
+                `,
+                [
+                    patientId,
+                    blood_group || null,
+                    allergies || null,
+                    insurance_no || null,
+                    parsedDeptId,
+                    personId,
+                    parsedBranchId
+                ]
+            );
+
+            await client.query("COMMIT");
+
+            const result = await pool.query(
+                `
+                SELECT
+                    p.patient_id,
+                    per.person_id,
+                    per.first_name,
+                    per.last_name,
+                    per.date_of_birth,
+                    per.gender,
+                    per.phone,
+                    per.email,
+                    per.address,
+                    p.blood_group,
+                    p.allergies,
+                    p.insurance_no,
+                    p.dept_id,
+                    p.branch_id,
+                    h.branch_name,
+                    h.city AS branch_city
+                FROM PATIENT p
+                JOIN PERSON per
+                    ON p.person_id = per.person_id
+                JOIN HOSPITAL_BRANCH h
+                    ON p.branch_id = h.branch_id
+                WHERE p.patient_id = $1
+                `,
+                [patientId]
+            );
+
+            res.status(201).json({
+                message: "Patient created successfully",
+                patient: result.rows[0]
+            });
+
+        } catch (error) {
+
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackError) {
+                console.error(
+                    "Rollback error:",
+                    rollbackError.message
+                );
+            }
+
+            console.error(
+                "Error creating patient:",
+                error.message
+            );
+
+            res.status(500).json({
+                error:
+                    "Failed to create patient"
+            });
+
+        } finally {
+            client.release();
+        }
+    }
+);
+
+
 // =====================================================
 // DOCTOR APIs
 // =====================================================
@@ -438,6 +680,335 @@ app.get(
 // /api/doctors
 // /api/doctors?branch_id=1
 // /api/doctors?branch_id=2
+
+// Create doctor
+app.post(
+    "/api/doctors",
+    async (req, res) => {
+
+        const client = await pool.connect();
+
+        try {
+
+            const {
+                first_name,
+                last_name,
+                date_of_birth,
+                gender,
+                phone,
+                email,
+                address,
+                specialization,
+                qualification,
+                experience_years,
+                consultation_fee,
+                dept_id,
+                branch_id
+            } = req.body;
+
+
+            if (
+                !first_name ||
+                !date_of_birth ||
+                !gender ||
+                !phone ||
+                !specialization ||
+                !qualification ||
+                experience_years === undefined ||
+                experience_years === "" ||
+                consultation_fee === undefined ||
+                consultation_fee === "" ||
+                !dept_id ||
+                !branch_id
+            ) {
+
+                return res.status(400).json({
+                    error:
+                        "All required doctor fields must be filled"
+                });
+
+            }
+
+
+            const experienceYears =
+                Number(experience_years);
+
+            const consultationFee =
+                Math.round(
+                    Number(consultation_fee) * 100
+                ) / 100;
+
+            const departmentId =
+                Number(dept_id);
+
+            const branchId =
+                Number(branch_id);
+
+
+            if (
+                !Number.isInteger(experienceYears) ||
+                experienceYears < 0 ||
+                !Number.isFinite(consultationFee) ||
+                consultationFee < 0 ||
+                !Number.isInteger(departmentId) ||
+                !Number.isInteger(branchId)
+            ) {
+
+                return res.status(400).json({
+                    error:
+                        "Invalid doctor numeric values"
+                });
+
+            }
+
+
+            await client.query("BEGIN");
+
+
+            // Check branch
+            const branchResult =
+                await client.query(
+                    `
+                    SELECT branch_id
+                    FROM HOSPITAL_BRANCH
+                    WHERE branch_id = $1
+                    `,
+                    [branchId]
+                );
+
+
+            if (
+                branchResult.rows.length === 0
+            ) {
+
+                throw new Error(
+                    "Selected branch does not exist"
+                );
+
+            }
+
+
+            // Check department
+            const departmentResult =
+                await client.query(
+                    `
+                    SELECT dept_id
+                    FROM DEPARTMENT
+                    WHERE dept_id = $1
+                    `,
+                    [departmentId]
+                );
+
+
+            if (
+                departmentResult.rows.length === 0
+            ) {
+
+                throw new Error(
+                    "Selected department does not exist"
+                );
+
+            }
+
+
+            // Generate new PERSON ID
+            const personIdResult =
+                await client.query(
+                    `
+                    SELECT
+                        COALESCE(
+                            MAX(person_id),
+                            0
+                        ) + 1 AS person_id
+                    FROM PERSON
+                    `
+                );
+
+
+            const personId =
+                Number(
+                    personIdResult.rows[0].person_id
+                );
+
+
+            // Generate new DOCTOR ID
+            const doctorIdResult =
+                await client.query(
+                    `
+                    SELECT
+                        COALESCE(
+                            MAX(doctor_id),
+                            0
+                        ) + 1 AS doctor_id
+                    FROM DOCTOR
+                    `
+                );
+
+
+            const doctorId =
+                Number(
+                    doctorIdResult.rows[0].doctor_id
+                );
+
+
+            // Insert into PERSON
+            await client.query(
+                `
+                INSERT INTO PERSON (
+                    person_id,
+                    first_name,
+                    last_name,
+                    date_of_birth,
+                    gender,
+                    phone,
+                    email,
+                    address
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8
+                )
+                `,
+                [
+                    personId,
+                    first_name,
+                    last_name || null,
+                    date_of_birth,
+                    gender,
+                    phone,
+                    email || null,
+                    address || null
+                ]
+            );
+
+
+            // Insert into DOCTOR
+            await client.query(
+                `
+                INSERT INTO DOCTOR (
+                    doctor_id,
+                    specialization,
+                    qualification,
+                    experience_years,
+                    consultation_fee,
+                    dept_id,
+                    person_id,
+                    branch_id
+                )
+                VALUES (
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8
+                )
+                `,
+                [
+                    doctorId,
+                    specialization,
+                    qualification,
+                    experienceYears,
+                    consultationFee,
+                    departmentId,
+                    personId,
+                    branchId
+                ]
+            );
+
+
+            await client.query("COMMIT");
+
+
+            // Get newly created doctor
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        d.doctor_id,
+                        per.person_id,
+                        per.first_name,
+                        per.last_name,
+                        per.date_of_birth,
+                        per.gender,
+                        per.phone,
+                        per.email,
+                        per.address,
+                        d.specialization,
+                        d.qualification,
+                        d.experience_years,
+                        d.consultation_fee,
+                        d.dept_id,
+                        d.branch_id,
+                        h.branch_name,
+                        h.city AS branch_city
+                    FROM DOCTOR d
+                    JOIN PERSON per
+                        ON d.person_id =
+                           per.person_id
+                    JOIN HOSPITAL_BRANCH h
+                        ON d.branch_id =
+                           h.branch_id
+                    WHERE d.doctor_id = $1
+                    `,
+                    [doctorId]
+                );
+
+
+            res.status(201).json({
+                message:
+                    "Doctor created successfully",
+                doctor:
+                    result.rows[0]
+            });
+
+
+        } catch (error) {
+
+            try {
+
+                await client.query("ROLLBACK");
+
+            } catch (rollbackError) {
+
+                console.error(
+                    "Rollback error:",
+                    rollbackError.message
+                );
+
+            }
+
+
+            console.error(
+                "Error creating doctor:",
+                error.message
+            );
+
+
+            res.status(500).json({
+                error:
+                    error.message ||
+                    "Failed to create doctor"
+            });
+
+
+        } finally {
+
+            client.release();
+
+        }
+
+    }
+);
+
 
 app.get(
     "/api/doctors",

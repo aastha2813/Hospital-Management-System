@@ -37,7 +37,8 @@ import {
     getRooms,
     getBills,
     getDoctorNotes,
-    getVitals
+    getVitals,
+    createDoctor
 } from "./services/api";
 
 
@@ -63,6 +64,53 @@ function App() {
     const [bills, setBills] = useState([]);
     const [doctorNotes, setDoctorNotes] = useState([]);
     const [vitals, setVitals] = useState([]);
+
+    // =====================================================
+// ADD PATIENT MODAL
+// =====================================================
+
+const [addPatientOpen, setAddPatientOpen] = useState(false);
+
+const [patientForm, setPatientForm] = useState({
+    first_name: "",
+    last_name: "",
+    date_of_birth: "",
+    gender: "",
+    phone: "",
+    email: "",
+    address: "",
+    blood_group: "",
+    allergies: "",
+    insurance_no: "",
+    dept_id: "",
+    branch_id: ""
+});
+
+const [addingPatient, setAddingPatient] = useState(false);
+const [patientFormError, setPatientFormError] = useState("");
+const [patientFormSuccess, setPatientFormSuccess] = useState("");
+
+const [addDoctorOpen, setAddDoctorOpen] = useState(false);
+
+const [doctorForm, setDoctorForm] = useState({
+    first_name: "",
+    last_name: "",
+    date_of_birth: "",
+    gender: "",
+    phone: "",
+    email: "",
+    address: "",
+    specialization: "",
+    qualification: "",
+    experience_years: "",
+    consultation_fee: "",
+    dept_id: "",
+    branch_id: ""
+});
+
+const [addingDoctor, setAddingDoctor] = useState(false);
+const [doctorFormError, setDoctorFormError] = useState("");
+const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
 
     // =====================================================
@@ -318,6 +366,104 @@ function App() {
     // =====================================================
     // BRANCH INFORMATION
     // =====================================================
+
+    const handleDoctorFormChange = (event) => {
+
+        const { name, value } = event.target;
+
+        setDoctorForm((previous) => ({
+            ...previous,
+            [name]: value
+        }));
+
+        setDoctorFormError("");
+        setDoctorFormSuccess("");
+    };
+
+
+    const handleAddDoctor = async (event) => {
+
+        event.preventDefault();
+
+        const branchId =
+            doctorForm.branch_id ||
+            (selectedBranch !== "all" ? selectedBranch : "");
+
+        if (
+            !doctorForm.first_name ||
+            !doctorForm.date_of_birth ||
+            !doctorForm.gender ||
+            !doctorForm.phone ||
+            !doctorForm.specialization ||
+            !doctorForm.qualification ||
+            doctorForm.experience_years === "" ||
+            doctorForm.consultation_fee === "" ||
+            !doctorForm.dept_id ||
+            !branchId
+        ) {
+            setDoctorFormError("Please fill all required fields.");
+            return;
+        }
+
+        try {
+            setAddingDoctor(true);
+            setDoctorFormError("");
+            setDoctorFormSuccess("");
+
+            const data = await createDoctor({
+                ...doctorForm,
+                branch_id: Number(branchId),
+                dept_id: Number(doctorForm.dept_id),
+                experience_years: parseInt(
+                    doctorForm.experience_years,
+                    10
+                ),
+                consultation_fee: Math.round(
+                    Number(doctorForm.consultation_fee) * 100
+                ) / 100
+            });
+
+            const currentBranchId =
+                selectedBranch === "all"
+                    ? null
+                    : Number(selectedBranch);
+
+            const updatedDoctors = await getDoctors(currentBranchId);
+            setDoctors(updatedDoctors);
+
+            setDoctorFormSuccess(
+                `Doctor D${data.doctor_id} added successfully.`
+            );
+
+            setDoctorForm({
+                first_name: "",
+                last_name: "",
+                date_of_birth: "",
+                gender: "",
+                phone: "",
+                email: "",
+                address: "",
+                specialization: "",
+                qualification: "",
+                experience_years: "",
+                consultation_fee: "",
+                dept_id: "",
+                branch_id: selectedBranch !== "all"
+                    ? selectedBranch
+                    : ""
+            });
+
+        } catch (error) {
+            console.error("Add Doctor Error:", error);
+            setDoctorFormError(
+                error.message || "Failed to add doctor."
+            );
+        } finally {
+            setAddingDoctor(false);
+        }
+
+    };
+
 
     const selectedBranchObject =
         branches.find(
@@ -703,6 +849,155 @@ function App() {
 
 
     // =====================================================
+    // ADD PATIENT
+    // =====================================================
+
+    const departments = [
+        { dept_id: 1, dept_name: "Cardiology" },
+        { dept_id: 2, dept_name: "Neurology" },
+        { dept_id: 3, dept_name: "Orthopedics" },
+        { dept_id: 4, dept_name: "General Medicine" },
+        { dept_id: 5, dept_name: "Pediatrics" },
+        { dept_id: 6, dept_name: "Emergency Medicine" }
+    ];
+
+
+    const handlePatientFormChange = (event) => {
+
+        const {
+            name,
+            value
+        } = event.target;
+
+        setPatientForm((previous) => ({
+            ...previous,
+            [name]: value
+        }));
+
+        setPatientFormError("");
+        setPatientFormSuccess("");
+    };
+
+
+    const handleAddPatient = async (event) => {
+
+        event.preventDefault();
+
+        const branchId =
+            patientForm.branch_id ||
+            (
+                selectedBranch !== "all"
+                    ? selectedBranch
+                    : ""
+            );
+
+        if (
+            !patientForm.first_name ||
+            !patientForm.date_of_birth ||
+            !patientForm.gender ||
+            !patientForm.phone ||
+            !patientForm.dept_id ||
+            !branchId
+        ) {
+            setPatientFormError(
+                "Please fill all required fields."
+            );
+            return;
+        }
+
+        try {
+
+            setAddingPatient(true);
+            setPatientFormError("");
+            setPatientFormSuccess("");
+
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/patients",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body: JSON.stringify({
+                            ...patientForm,
+                            branch_id:
+                                Number(branchId),
+                            dept_id:
+                                Number(
+                                    patientForm.dept_id
+                                )
+                        })
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error ||
+                    "Failed to add patient."
+                );
+            }
+
+            const currentBranchId =
+                selectedBranch === "all"
+                    ? null
+                    : Number(selectedBranch);
+
+            const updatedPatients =
+                await getPatients(
+                    currentBranchId
+                );
+
+            setPatients(updatedPatients);
+
+            setPatientFormSuccess(
+                `Patient P${data.patient_id} added successfully.`
+            );
+
+            setPatientForm({
+                first_name: "",
+                last_name: "",
+                date_of_birth: "",
+                gender: "",
+                phone: "",
+                email: "",
+                address: "",
+                blood_group: "",
+                allergies: "",
+                insurance_no: "",
+                dept_id: "",
+                branch_id:
+                    selectedBranch !== "all"
+                        ? selectedBranch
+                        : ""
+            });
+
+        } catch (err) {
+
+            console.error(
+                "Add Patient Error:",
+                err
+            );
+
+            setPatientFormError(
+                err.message ||
+                "Unable to add patient."
+            );
+
+        } finally {
+
+            setAddingPatient(false);
+
+        }
+
+    };
+
+
+    // =====================================================
     // PAGE HEADER
     // =====================================================
 
@@ -732,7 +1027,43 @@ function App() {
 
                     {actionText && (
 
-                        <button className="primary-action">
+                        <button
+                            type="button"
+                            className="primary-action"
+                            onClick={
+                                title === "Patients"
+                                    ? () => {
+                                        setPatientFormError("");
+                                        setPatientFormSuccess("");
+
+                                        setPatientForm((previous) => ({
+                                            ...previous,
+                                            branch_id:
+                                                selectedBranch !== "all"
+                                                    ? selectedBranch
+                                                    : previous.branch_id
+                                        }));
+
+                                        setAddPatientOpen(true);
+                                    }
+                                    : title === "Doctors"
+                                        ? () => {
+                                            setDoctorFormError("");
+                                            setDoctorFormSuccess("");
+
+                                            setDoctorForm((previous) => ({
+                                                ...previous,
+                                                branch_id:
+                                                    selectedBranch !== "all"
+                                                        ? selectedBranch
+                                                        : previous.branch_id
+                                            }));
+
+                                            setAddDoctorOpen(true);
+                                        }
+                                        : undefined
+                            }
+                        >
                             {actionText}
                         </button>
 
@@ -1031,7 +1362,8 @@ function App() {
 
                 {renderPageHeader(
                     "Doctors",
-                    `${doctorCount} doctors in ${selectedBranchName}`
+                    `${doctorCount} doctors in ${selectedBranchName}`,
+                    "Add Doctor"
                 )}
 
 
@@ -3178,6 +3510,573 @@ function App() {
                 </section>
 
             </main>
+
+
+            {addDoctorOpen && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(15, 23, 42, 0.48)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "24px",
+                        zIndex: 1000
+                    }}
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !addingDoctor) {
+                            setAddDoctorOpen(false);
+                        }
+                    }}
+                >
+                    <div
+                        style={{
+                            width: "min(820px, 100%)",
+                            maxHeight: "90vh",
+                            overflowY: "auto",
+                            background: "#ffffff",
+                            borderRadius: "18px",
+                            boxShadow: "0 24px 70px rgba(15, 23, 42, 0.25)",
+                            padding: "28px"
+                        }}
+                    >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
+                            <div>
+                                <h2 style={{ margin: 0, color: "#0f172a", fontSize: "24px" }}>Add New Doctor</h2>
+                                <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "14px" }}>Register a doctor in the hospital system</p>
+                            </div>
+                            <button type="button" onClick={() => !addingDoctor && setAddDoctorOpen(false)} style={{ border: "none", background: "#f1f5f9", width: "36px", height: "36px", borderRadius: "10px", fontSize: "22px", cursor: "pointer", color: "#475569" }}>×</button>
+                        </div>
+
+                        {doctorFormError && (
+                            <div style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", padding: "11px 14px", borderRadius: "10px", marginBottom: "16px", fontSize: "14px" }}>
+                                {doctorFormError}
+                            </div>
+                        )}
+
+                        {doctorFormSuccess && (
+                            <div style={{ background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", padding: "11px 14px", borderRadius: "10px", marginBottom: "16px", fontSize: "14px" }}>
+                                {doctorFormSuccess}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleAddDoctor}>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "16px" }}>
+                                {[
+                                    ["first_name", "First Name", "text", true],
+                                    ["last_name", "Last Name", "text", false],
+                                    ["date_of_birth", "Date of Birth", "date", true],
+                                    ["phone", "Phone", "tel", true],
+                                    ["email", "Email", "email", false],
+                                    ["address", "Address", "text", false],
+                                    ["specialization", "Specialization", "text", true],
+                                    ["qualification", "Qualification", "text", true],
+                                    ["experience_years", "Experience (Years)", "text", true],
+                                    ["consultation_fee", "Consultation Fee (₹)", "text", true]
+                                ].map(([name, label, type, required]) => (
+                                    <div key={name} style={{ gridColumn: name === "address" ? "1 / -1" : "auto" }}>
+                                        <label style={{ display: "block", marginBottom: "7px", fontSize: "13px", fontWeight: 600, color: "#334155" }}>
+                                            {label}{required && " *"}
+                                        </label>
+                                        <input
+                                            name={name}
+                                            type={type}
+                                            inputMode={
+                                                name === "experience_years"
+                                                    ? "numeric"
+                                                    : name === "consultation_fee"
+                                                        ? "decimal"
+                                                        : undefined
+                                            }
+                                            min={
+                                                name === "experience_years" ||
+                                                name === "consultation_fee"
+                                                    ? "0"
+                                                    : undefined
+                                            }
+                                            step={
+                                                name === "consultation_fee"
+                                                    ? "0.01"
+                                                    : undefined
+                                            }
+                                            value={doctorForm[name]}
+                                            onChange={handleDoctorFormChange}
+                                            required={required}
+                                            style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", border: "1px solid #dbe3ef", borderRadius: "9px", outline: "none", fontSize: "14px", color: "#0f172a" }}
+                                        />
+                                    </div>
+                                ))}
+
+                                <div>
+                                    <label style={{ display: "block", marginBottom: "7px", fontSize: "13px", fontWeight: 600, color: "#334155" }}>Gender *</label>
+                                    <select name="gender" value={doctorForm.gender} onChange={handleDoctorFormChange} required style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", border: "1px solid #dbe3ef", borderRadius: "9px", outline: "none", fontSize: "14px", color: "#0f172a", background: "#ffffff" }}>
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: "block", marginBottom: "7px", fontSize: "13px", fontWeight: 600, color: "#334155" }}>Department *</label>
+                                    <select name="dept_id" value={doctorForm.dept_id} onChange={handleDoctorFormChange} required style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", border: "1px solid #dbe3ef", borderRadius: "9px", outline: "none", fontSize: "14px", color: "#0f172a", background: "#ffffff" }}>
+                                        <option value="">Select Department</option>
+                                        <option value="1">Cardiology</option>
+                                        <option value="2">Neurology</option>
+                                        <option value="3">Orthopedics</option>
+                                        <option value="4">General Medicine</option>
+                                        <option value="5">Pediatrics</option>
+                                        <option value="6">Emergency Medicine</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: "block", marginBottom: "7px", fontSize: "13px", fontWeight: 600, color: "#334155" }}>Branch *</label>
+                                    <select name="branch_id" value={doctorForm.branch_id} onChange={handleDoctorFormChange} required style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", border: "1px solid #dbe3ef", borderRadius: "9px", outline: "none", fontSize: "14px", color: "#0f172a", background: "#ffffff" }}>
+                                        <option value="">Select Branch</option>
+                                        {branches.map((branch) => (
+                                            <option key={branch.branch_id} value={branch.branch_id}>{branch.branch_name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px", paddingTop: "18px", borderTop: "1px solid #e2e8f0" }}>
+                                <button type="button" onClick={() => setAddDoctorOpen(false)} disabled={addingDoctor} style={{ padding: "11px 18px", borderRadius: "9px", border: "1px solid #dbe3ef", background: "#ffffff", color: "#475569", fontWeight: 600, cursor: addingDoctor ? "not-allowed" : "pointer" }}>Cancel</button>
+                                <button type="submit" disabled={addingDoctor} style={{ padding: "11px 20px", borderRadius: "9px", border: "none", background: "#2563eb", color: "#ffffff", fontWeight: 600, cursor: addingDoctor ? "not-allowed" : "pointer", opacity: addingDoctor ? 0.7 : 1 }}>
+                                    {addingDoctor ? "Adding Doctor..." : "Add Doctor"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {addPatientOpen && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(15, 23, 42, 0.48)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "24px",
+                        zIndex: 1000
+                    }}
+                    onMouseDown={(event) => {
+                        if (
+                            event.target ===
+                            event.currentTarget
+                        ) {
+                            setAddPatientOpen(false);
+                        }
+                    }}
+                >
+
+                    <div
+                        style={{
+                            width: "min(760px, 100%)",
+                            maxHeight: "90vh",
+                            overflowY: "auto",
+                            background: "#ffffff",
+                            borderRadius: "18px",
+                            boxShadow:
+                                "0 24px 70px rgba(15, 23, 42, 0.25)",
+                            padding: "28px"
+                        }}
+                    >
+
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "22px"
+                            }}
+                        >
+
+                            <div>
+                                <h2
+                                    style={{
+                                        margin: 0,
+                                        color: "#0f172a",
+                                        fontSize: "24px"
+                                    }}
+                                >
+                                    Add New Patient
+                                </h2>
+
+                                <p
+                                    style={{
+                                        margin: "6px 0 0",
+                                        color: "#64748b",
+                                        fontSize: "14px"
+                                    }}
+                                >
+                                    Register a new patient in the hospital system
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setAddPatientOpen(false)
+                                }
+                                style={{
+                                    border: "none",
+                                    background: "#f1f5f9",
+                                    width: "36px",
+                                    height: "36px",
+                                    borderRadius: "10px",
+                                    fontSize: "22px",
+                                    cursor: "pointer",
+                                    color: "#475569"
+                                }}
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+
+                        {patientFormError && (
+                            <div
+                                style={{
+                                    background: "#fef2f2",
+                                    color: "#b91c1c",
+                                    border: "1px solid #fecaca",
+                                    padding: "11px 14px",
+                                    borderRadius: "10px",
+                                    marginBottom: "16px",
+                                    fontSize: "14px"
+                                }}
+                            >
+                                {patientFormError}
+                            </div>
+                        )}
+
+
+                        {patientFormSuccess && (
+                            <div
+                                style={{
+                                    background: "#f0fdf4",
+                                    color: "#15803d",
+                                    border: "1px solid #bbf7d0",
+                                    padding: "11px 14px",
+                                    borderRadius: "10px",
+                                    marginBottom: "16px",
+                                    fontSize: "14px"
+                                }}
+                            >
+                                {patientFormSuccess}
+                            </div>
+                        )}
+
+
+                        <form onSubmit={handleAddPatient}>
+
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                        "repeat(2, minmax(0, 1fr))",
+                                    gap: "16px"
+                                }}
+                            >
+
+                                {[
+                                    ["first_name", "First Name", "text", true],
+                                    ["last_name", "Last Name", "text", false],
+                                    ["date_of_birth", "Date of Birth", "date", true],
+                                    ["phone", "Phone", "tel", true],
+                                    ["email", "Email", "email", false],
+                                    ["address", "Address", "text", false],
+                                    ["blood_group", "Blood Group", "text", false],
+                                    ["allergies", "Allergies", "text", false],
+                                    ["insurance_no", "Insurance No.", "text", false]
+                                ].map(
+                                    ([
+                                        name,
+                                        label,
+                                        type,
+                                        required
+                                    ]) => (
+                                        <div
+                                            key={name}
+                                            style={{
+                                                gridColumn:
+                                                    name === "address"
+                                                        ? "1 / -1"
+                                                        : "auto"
+                                            }}
+                                        >
+
+                                            <label
+                                                style={{
+                                                    display: "block",
+                                                    marginBottom: "7px",
+                                                    fontSize: "13px",
+                                                    fontWeight: 600,
+                                                    color: "#334155"
+                                                }}
+                                            >
+                                                {label}
+                                                {required && " *"}
+                                            </label>
+
+                                            <input
+                                                name={name}
+                                                type={type}
+                                                value={
+                                                    patientForm[name]
+                                                }
+                                                onChange={
+                                                    handlePatientFormChange
+                                                }
+                                                required={required}
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    padding: "11px 12px",
+                                                    border: "1px solid #dbe3ef",
+                                                    borderRadius: "9px",
+                                                    outline: "none",
+                                                    fontSize: "14px",
+                                                    color: "#0f172a"
+                                                }}
+                                            />
+
+                                        </div>
+                                    )
+                                )}
+
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Gender *
+                                    </label>
+
+                                    <select
+                                        name="gender"
+                                        value={patientForm.gender}
+                                        onChange={
+                                            handlePatientFormChange
+                                        }
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            fontSize: "14px",
+                                            background: "#fff"
+                                        }}
+                                    >
+                                        <option value="">
+                                            Select Gender
+                                        </option>
+                                        <option value="Male">
+                                            Male
+                                        </option>
+                                        <option value="Female">
+                                            Female
+                                        </option>
+                                        <option value="Other">
+                                            Other
+                                        </option>
+                                    </select>
+
+                                </div>
+
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Department *
+                                    </label>
+
+                                    <select
+                                        name="dept_id"
+                                        value={patientForm.dept_id}
+                                        onChange={
+                                            handlePatientFormChange
+                                        }
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            fontSize: "14px",
+                                            background: "#fff"
+                                        }}
+                                    >
+                                        <option value="">
+                                            Select Department
+                                        </option>
+
+                                        {departments.map(
+                                            (department) => (
+                                                <option
+                                                    key={
+                                                        department.dept_id
+                                                    }
+                                                    value={
+                                                        department.dept_id
+                                                    }
+                                                >
+                                                    {
+                                                        department.dept_name
+                                                    }
+                                                </option>
+                                            )
+                                        )}
+
+                                    </select>
+
+                                </div>
+
+
+                                <div>
+
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            marginBottom: "7px",
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155"
+                                        }}
+                                    >
+                                        Branch *
+                                    </label>
+
+                                    <select
+                                        name="branch_id"
+                                        value={patientForm.branch_id}
+                                        onChange={
+                                            handlePatientFormChange
+                                        }
+                                        required
+                                        style={{
+                                            width: "100%",
+                                            padding: "11px 12px",
+                                            border: "1px solid #dbe3ef",
+                                            borderRadius: "9px",
+                                            fontSize: "14px",
+                                            background: "#fff"
+                                        }}
+                                    >
+                                        <option value="">
+                                            Select Branch
+                                        </option>
+
+                                        {branches.map(
+                                            (branch) => (
+                                                <option
+                                                    key={
+                                                        branch.branch_id
+                                                    }
+                                                    value={
+                                                        branch.branch_id
+                                                    }
+                                                >
+                                                    {
+                                                        branch.branch_name
+                                                    }
+                                                </option>
+                                            )
+                                        )}
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    gap: "10px",
+                                    marginTop: "24px",
+                                    paddingTop: "18px",
+                                    borderTop: "1px solid #e2e8f0"
+                                }}
+                            >
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setAddPatientOpen(false)
+                                    }
+                                    style={{
+                                        padding: "11px 18px",
+                                        border: "1px solid #dbe3ef",
+                                        background: "#ffffff",
+                                        color: "#475569",
+                                        borderRadius: "9px",
+                                        fontWeight: 600,
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+
+
+                                <button
+                                    type="submit"
+                                    disabled={addingPatient}
+                                    style={{
+                                        padding: "11px 20px",
+                                        border: "none",
+                                        background:
+                                            addingPatient
+                                                ? "#93c5fd"
+                                                : "#2563eb",
+                                        color: "#ffffff",
+                                        borderRadius: "9px",
+                                        fontWeight: 600,
+                                        cursor:
+                                            addingPatient
+                                                ? "not-allowed"
+                                                : "pointer"
+                                    }}
+                                >
+                                    {addingPatient
+                                        ? "Adding..."
+                                        : "Add Patient"}
+                                </button>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </div>
+            )}
+
 
         </div>
 

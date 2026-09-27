@@ -213,3 +213,15 @@ export const makePayment = (
         "/payments",
         paymentData
     );
+
+    // =====================================================
+// CREATE DOCTOR
+// =====================================================
+
+export const createDoctor = (
+    doctorData
+) =>
+    post(
+        "/doctors",
+        doctorData
+    );

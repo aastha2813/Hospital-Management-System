@@ -26,6 +26,9 @@ import {
 } from "lucide-react";
 
 import Sidebar from "./components/Sidebar";
+import RoleSelection from "./components/RoleSelection";
+import BranchSelection from "./components/BranchSelection";
+import LoginPage from "./components/LoginPage";
 import "./App.css";
 
 import {
@@ -52,6 +55,8 @@ function App() {
     // =====================================================
 
     const [currentPage, setCurrentPage] = useState("dashboard");
+    const [selectedRole, setSelectedRole] = useState(null);
+    const [selectedAuthBranch, setSelectedAuthBranch] = useState(null);
 
 
     // =====================================================
@@ -541,26 +546,42 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
         let specialization = "General Medicine";
 
+        // Cardiology-related problems
         if (
             /chest|heart|cardiac|palpitation|blood pressure|hypertension|breathing problem|shortness of breath/.test(text)
         ) {
             specialization = "Cardiology";
+
+        // Neurology-related problems
         } else if (
-            /headache|migraine|dizziness|seizure|vertigo|memory|neurological|numbness/.test(text)
+            /migraine|dizziness|seizure|vertigo|memory|neurological|numbness/.test(text)
         ) {
             specialization = "Neurology";
+
+        // Orthopedics-related problems
         } else if (
             /bone|joint|knee|back pain|fracture|shoulder|arthritis|muscle|sprain|leg pain/.test(text)
         ) {
             specialization = "Orthopedics";
+
+        // Pediatrics-related problems
         } else if (
             /child|baby|infant|pediatric|paediatric|kid/.test(text)
         ) {
             specialization = "Pediatrics";
+
+        // Emergency-related problems
         } else if (
             /accident|severe injury|trauma|bleeding|unconscious|emergency/.test(text)
         ) {
             specialization = "Emergency Medicine";
+
+        // General Medicine-related problems
+        // Headache is intentionally included here.
+        } else if (
+            /fever|headache|cold|cough|flu|weakness|fatigue|stomach|vomiting|diarrhea|infection|body pain|general pain/.test(text)
+        ) {
+            specialization = "General Medicine";
         }
 
         const branchDoctors =
@@ -571,26 +592,78 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
             );
 
         const matchedDoctor =
-            branchDoctors.find(
-                (doctor) =>
-                    String(
-                        doctor.specialization || ""
-                    ).toLowerCase() ===
-                    specialization.toLowerCase()
-            );
+            branchDoctors.find((doctor) => {
 
-        return (
-            matchedDoctor ||
-            branchDoctors.find(
-                (doctor) =>
+                const doctorSpecialization =
                     String(
                         doctor.specialization || ""
-                    ).toLowerCase() ===
-                    "general medicine"
-            ) ||
-            branchDoctors[0] ||
-            null
-        );
+                    )
+                        .toLowerCase()
+                        .trim();
+
+                if (
+                    specialization === "Cardiology" &&
+                    (
+                        doctorSpecialization === "cardiology" ||
+                        doctorSpecialization === "cardiologist"
+                    )
+                ) {
+                    return true;
+                }
+
+                if (
+                    specialization === "Neurology" &&
+                    (
+                        doctorSpecialization === "neurology" ||
+                        doctorSpecialization === "neurologist"
+                    )
+                ) {
+                    return true;
+                }
+
+                if (
+                    specialization === "Orthopedics" &&
+                    (
+                        doctorSpecialization === "orthopedics" ||
+                        doctorSpecialization === "orthopedic" ||
+                        doctorSpecialization === "orthopaedics"
+                    )
+                ) {
+                    return true;
+                }
+
+                if (
+                    specialization === "Pediatrics" &&
+                    (
+                        doctorSpecialization === "pediatrics" ||
+                        doctorSpecialization === "pediatrician"
+                    )
+                ) {
+                    return true;
+                }
+
+                if (
+                    specialization === "Emergency Medicine" &&
+                    (
+                        doctorSpecialization === "emergency medicine" ||
+                        doctorSpecialization === "emergency physician"
+                    )
+                ) {
+                    return true;
+                }
+
+                if (
+                    specialization === "General Medicine" &&
+                    doctorSpecialization === "general medicine"
+                ) {
+                    return true;
+                }
+
+                return false;
+            });
+
+        // Do not randomly assign the first doctor in the branch.
+        return matchedDoctor || null;
 
     };
 
@@ -771,7 +844,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
             );
 
             setAppointmentFormSuccess(
-                `Appointment booked. ${selectedDoctor.first_name ? `Dr. ${selectedDoctor.first_name} ${selectedDoctor.last_name || ""}` : `Doctor #${selectedDoctor.doctor_id}`} (${selectedDoctor.specialization}) has been assigned.`
+                `Appointment booked. ${selectedDoctor.first_name ? `Dr. ${selectedDoctor.first_name} ${selectedDoctor.last_name || ""}` : `Doctor #${selectedDoctor.doctor_id}`} (${String(selectedDoctor.specialization || "").toLowerCase() === "general physician" ? "General Medicine" : selectedDoctor.specialization}) has been assigned.`
             );
 
             setAppointmentForm({
@@ -4175,6 +4248,54 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
     // MAIN UI
     // =====================================================
 
+    if (!selectedRole) {
+        return (
+            <RoleSelection
+                onSelectRole={(role) => {
+                    setSelectedRole(role);
+                    setSelectedAuthBranch(null);
+                }}
+            />
+        );
+    }
+
+    if (
+        (selectedRole === "doctor" || selectedRole === "patient") &&
+        !selectedAuthBranch
+    ) {
+        return (
+            <BranchSelection
+                role={selectedRole}
+                onSelectBranch={(branch) => setSelectedAuthBranch(branch)}
+                onBack={() => {
+                    setSelectedRole(null);
+                    setSelectedAuthBranch(null);
+                }}
+            />
+        );
+    }
+
+    if (
+        selectedRole === "admin" ||
+        ((selectedRole === "doctor" || selectedRole === "patient") &&
+            selectedAuthBranch)
+    ) {
+        return (
+            <LoginPage
+                role={selectedRole}
+                branch={selectedAuthBranch}
+                onBack={() => {
+                    if (selectedRole === "admin") {
+                        setSelectedRole(null);
+                        setSelectedAuthBranch(null);
+                    } else {
+                        setSelectedAuthBranch(null);
+                    }
+                }}
+            />
+        );
+    }
+
     return (
 
         <div className="app">
@@ -4484,7 +4605,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     );
 
                                                 return doctor
-                                                    ? `Dr. ${doctor.first_name || ""} ${doctor.last_name || ""} — ${doctor.specialization}`
+                                                    ? `Dr. ${doctor.first_name || ""} ${doctor.last_name || ""} — ${String(doctor.specialization || "").toLowerCase() === "general physician" ? "General Medicine" : doctor.specialization}`
                                                     : "No suitable doctor found";
                                             })()
                                             : appointmentForm.patient_id &&

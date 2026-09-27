@@ -255,3 +255,16 @@ export const dischargePatient = (
             discharge_date: dischargeDate
         }
     );
+
+
+// =====================================================
+// AUTHENTICATION
+// =====================================================
+
+export const loginUser = (
+    loginData
+) =>
+    post(
+        "/auth/login",
+        loginData
+    );

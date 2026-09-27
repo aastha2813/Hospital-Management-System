@@ -3,6 +3,7 @@ const cors = require("cors");
 const { Pool } = require("pg");
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
+const bcrypt = require("bcryptjs");
 
 const app = express();
 
@@ -2455,6 +2456,192 @@ app.get(
 
         }
 
+    }
+);
+
+
+
+// =====================================================
+// POSTGRESQL AUTHENTICATION
+// =====================================================
+
+app.post(
+    "/api/auth/login",
+    async (req, res) => {
+
+        try {
+
+            const {
+                email,
+                password,
+                role,
+                branch_id
+            } = req.body;
+
+            if (!email || !password || !role) {
+                return res.status(400).json({
+                    error:
+                        "Email, password and role are required"
+                });
+            }
+
+            const normalizedRole =
+                String(role).toLowerCase().trim();
+
+            if (
+                !["admin", "doctor", "patient"]
+                    .includes(normalizedRole)
+            ) {
+                return res.status(400).json({
+                    error: "Invalid role"
+                });
+            }
+
+            let branchId = null;
+
+            if (normalizedRole !== "admin") {
+
+                branchId = Number(branch_id);
+
+                if (!Number.isInteger(branchId)) {
+                    return res.status(400).json({
+                        error:
+                            "A valid branch is required"
+                    });
+                }
+            }
+
+            const result = await pool.query(
+                `
+                SELECT
+                    user_id,
+                    email,
+                    password_hash,
+                    role,
+                    branch_id,
+                    doctor_id,
+                    patient_id,
+                    is_active
+                FROM AUTH_USER
+                WHERE LOWER(email) = LOWER($1)
+                  AND role = $2
+                  AND (
+                        ($2 = 'admin'
+                         AND branch_id IS NULL)
+                        OR
+                        ($2 <> 'admin'
+                         AND branch_id = $3)
+                  )
+                `,
+                [
+                    email.trim(),
+                    normalizedRole,
+                    branchId
+                ]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(401).json({
+                    error:
+                        "Invalid email, password, role or branch"
+                });
+            }
+
+            const user = result.rows[0];
+
+            if (!user.is_active) {
+                return res.status(403).json({
+                    error:
+                        "This account is inactive"
+                });
+            }
+
+            const passwordMatches =
+                await bcrypt.compare(
+                    password,
+                    user.password_hash
+                );
+
+            if (!passwordMatches) {
+                return res.status(401).json({
+                    error:
+                        "Invalid email, password, role or branch"
+                });
+            }
+
+            let profile = null;
+
+            if (normalizedRole === "doctor") {
+
+                const doctorResult =
+                    await pool.query(
+                        `
+                        SELECT
+                            d.doctor_id,
+                            per.first_name,
+                            per.last_name,
+                            d.specialization,
+                            d.branch_id
+                        FROM DOCTOR d
+                        JOIN PERSON per
+                            ON d.person_id =
+                               per.person_id
+                        WHERE d.doctor_id = $1
+                        `,
+                        [user.doctor_id]
+                    );
+
+                profile =
+                    doctorResult.rows[0] || null;
+
+            } else if (normalizedRole === "patient") {
+
+                const patientResult =
+                    await pool.query(
+                        `
+                        SELECT
+                            p.patient_id,
+                            per.first_name,
+                            per.last_name,
+                            p.branch_id
+                        FROM PATIENT p
+                        JOIN PERSON per
+                            ON p.person_id =
+                               per.person_id
+                        WHERE p.patient_id = $1
+                        `,
+                        [user.patient_id]
+                    );
+
+                profile =
+                    patientResult.rows[0] || null;
+            }
+
+            res.json({
+                message: "Login successful",
+                user: {
+                    user_id: user.user_id,
+                    email: user.email,
+                    role: user.role,
+                    branch_id: user.branch_id,
+                    doctor_id: user.doctor_id,
+                    patient_id: user.patient_id,
+                    profile
+                }
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Authentication error:",
+                error.message
+            );
+
+            res.status(500).json({
+                error:
+                    "Authentication failed"
+            });
+        }
     }
 );
 

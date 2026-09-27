@@ -3,6 +3,7 @@
 -- PL/SQL PROCEDURES
 -- ============================================
 
+
 -- ============================================
 -- PROCEDURE 1: BookAppointment
 -- ============================================
@@ -268,5 +269,34 @@ BEGIN
     RAISE NOTICE
         'Payment of % recorded successfully for Bill %.',
         p_amount, p_bill_id;
+END;
+$$;
+
+
+-- ============================================
+-- PROCEDURE 5: CompleteAppointment
+-- ============================================
+
+CREATE OR REPLACE PROCEDURE CompleteAppointment(
+    IN p_appointment_id INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM APPOINTMENT
+        WHERE appointment_id = p_appointment_id
+    ) THEN
+        RAISE EXCEPTION
+            'Appointment % does not exist',
+            p_appointment_id;
+    END IF;
+
+    UPDATE APPOINTMENT
+    SET status = 'Completed'
+    WHERE appointment_id = p_appointment_id;
+
 END;
 $$;

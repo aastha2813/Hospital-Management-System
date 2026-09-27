@@ -58,6 +58,18 @@ function App() {
     const [selectedRole, setSelectedRole] = useState(null);
     const [selectedAuthBranch, setSelectedAuthBranch] = useState(null);
 
+    // =====================================================
+    // AUTHENTICATED USER
+    // =====================================================
+
+    const [authenticatedUser, setAuthenticatedUser] = useState(null);
+
+    // =====================================================
+    // DOCTOR PATIENT DETAILS
+    // =====================================================
+
+    const [selectedDoctorPatient, setSelectedDoctorPatient] = useState(null);
+
 
     // =====================================================
     // API DATA
@@ -168,6 +180,10 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+
+    // Appointment completion state
+    const [completingAppointmentId, setCompletingAppointmentId] = useState(null);
+    const [completionError, setCompletionError] = useState("");
 
 
     // =====================================================
@@ -409,6 +425,37 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
         loadData();
 
+    }, [selectedBranch]);
+
+    // Keep appointment status synchronized across Doctor, Admin and
+    // Patient dashboards. Any dashboard open in another browser/tab
+    // will pick up a completed appointment automatically.
+    useEffect(() => {
+        const refreshAppointmentStatus = async () => {
+            try {
+                const currentBranchId =
+                    selectedBranch === "all"
+                        ? null
+                        : Number(selectedBranch);
+
+                const updatedAppointments =
+                    await getAppointments(currentBranchId);
+
+                setAppointments(updatedAppointments);
+            } catch (refreshError) {
+                console.error(
+                    "Appointment status refresh error:",
+                    refreshError
+                );
+            }
+        };
+
+        const intervalId = setInterval(
+            refreshAppointmentStatus,
+            5000
+        );
+
+        return () => clearInterval(intervalId);
     }, [selectedBranch]);
 
 
@@ -1158,6 +1205,104 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
     };
 
 
+    // =====================================================
+    // COMPLETE APPOINTMENT
+    // =====================================================
+
+    const handleCompleteAppointment = async (appointmentId) => {
+        if (!appointmentId || completingAppointmentId !== null) {
+            return;
+        }
+
+        const appointment = appointments.find(
+            (item) =>
+                Number(item.appointment_id) === Number(appointmentId)
+        );
+
+        if (!appointment) {
+            window.alert("Appointment not found.");
+            return;
+        }
+
+        if (
+            String(appointment.status || "Scheduled")
+                .toLowerCase() === "completed"
+        ) {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Mark appointment A${appointmentId} as completed?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            setCompletingAppointmentId(Number(appointmentId));
+            setCompletionError("");
+
+            /*
+             * The backend must execute the PostgreSQL CompleteAppointment
+             * procedure and then return the updated appointment.
+             */
+            const response = await fetch(
+                `http://localhost:5000/api/appointments/${appointmentId}/complete`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error || "Failed to complete appointment."
+                );
+            }
+
+            /*
+             * Refresh appointments from PostgreSQL.
+             * This makes the same database status visible in:
+             * - Doctor Dashboard
+             * - Admin Dashboard
+             * - Patient Dashboard
+             */
+            const currentBranchId =
+                selectedBranch === "all"
+                    ? null
+                    : Number(selectedBranch);
+
+            const updatedAppointments =
+                await getAppointments(currentBranchId);
+
+            setAppointments(updatedAppointments);
+
+            window.alert(
+                `Appointment A${appointmentId} has been marked as Completed.`
+            );
+        } catch (error) {
+            console.error("Complete Appointment Error:", error);
+
+            setCompletionError(
+                error.message ||
+                "Failed to complete appointment."
+            );
+
+            window.alert(
+                error.message ||
+                "Failed to complete appointment."
+            );
+        } finally {
+            setCompletingAppointmentId(null);
+        }
+    };
+
+
     const selectedBranchObject =
         branches.find(
             (branch) =>
@@ -1519,7 +1664,9 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                         <div className="profile-details">
 
                             <strong>
-                                Aastha
+                                {authenticatedUser?.profile
+                                    ? `${authenticatedUser.profile.first_name} ${authenticatedUser.profile.last_name || ""}`.trim()
+                                    : "Aastha"}
                             </strong>
 
                             <span>
@@ -1531,6 +1678,20 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                         <ChevronDown size={16} />
 
                     </div>
+
+                    <button
+                        type="button"
+                        className="primary-action"
+                        onClick={() => {
+                            setAuthenticatedUser(null);
+                            setSelectedRole(null);
+                            setSelectedAuthBranch(null);
+                            setCurrentPage("dashboard");
+                            setSelectedBranch("all");
+                        }}
+                    >
+                        Logout
+                    </button>
 
                 </div>
 
@@ -2375,7 +2536,15 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                                 <td>
 
-                                                    <span className="status-badge status-blue">
+                                                    <span
+                                                        className={`status-badge ${
+                                                            String(
+                                                                appointment.status || "Scheduled"
+                                                            ).toLowerCase() === "completed"
+                                                                ? "status-green"
+                                                                : "status-blue"
+                                                        }`}
+                                                    >
                                                         {
                                                             appointment.status ||
                                                             "Scheduled"
@@ -4245,10 +4414,1213 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
 
     // =====================================================
+    // PORTAL VIEWS
+    // =====================================================
+
+    const getUserDisplayName = () => {
+        const profile = authenticatedUser?.profile;
+
+        if (profile?.first_name) {
+            return `${profile.first_name} ${profile.last_name || ""}`.trim();
+        }
+
+        return authenticatedUser?.email || "User";
+    };
+
+    const renderDoctorPortal = () => {
+        const doctorId = authenticatedUser?.doctor_id;
+        const branchId = authenticatedUser?.branch_id;
+
+        // Keep the doctor portal restricted to the authenticated doctor
+        // and the authenticated hospital branch.
+        const doctorAppointments = appointments
+            .filter(
+                (appointment) =>
+                    Number(appointment.doctor_id) === Number(doctorId) &&
+                    Number(appointment.branch_id) === Number(branchId)
+            )
+            .sort((a, b) => {
+                const first = `${a.date || ""} ${a.time || ""}`;
+                const second = `${b.date || ""} ${b.time || ""}`;
+                return first.localeCompare(second);
+            });
+
+        const doctorNotesForUser = doctorNotes.filter(
+            (note) =>
+                Number(note.doctor_id) === Number(doctorId) &&
+                Number(note.branch_id || branchId) === Number(branchId)
+        );
+
+        const doctorPatientIds = [
+            ...new Set(
+                doctorAppointments.map((appointment) =>
+                    Number(appointment.patient_id)
+                )
+            )
+        ];
+
+        const doctorPatients = patients.filter((patient) =>
+            doctorPatientIds.includes(Number(patient.patient_id))
+        );
+
+        const patientById = Object.fromEntries(
+            doctorPatients.map((patient) => [
+                Number(patient.patient_id),
+                patient
+            ])
+        );
+
+        // Project/demo date used by the hospital dataset.
+        // The current appointment data uses 28 September 2026 as "today".
+        // Keeping this as a YYYY-MM-DD string also avoids timezone conversion
+        // issues with PostgreSQL DATE values.
+        const today = "2026-09-28";
+
+        // PostgreSQL DATE values may arrive through the API as either:
+        //   2026-09-28
+        // or an ISO timestamp such as:
+        //   2026-09-27T18:30:00.000Z
+        // The latter represents 28/09/2026 in India (IST).
+        // Always normalize appointment dates using Asia/Kolkata so the
+        // dashboard does not show the previous day because of UTC conversion.
+        const getDateKey = (dateValue) => {
+            if (!dateValue) return "";
+
+            const raw = String(dateValue);
+
+            // A true PostgreSQL DATE string should be used directly.
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+                return raw;
+            }
+
+            // API timestamp -> Indian calendar date.
+            const parsed = new Date(raw);
+            if (Number.isNaN(parsed.getTime())) return raw.slice(0, 10);
+
+            const parts = new Intl.DateTimeFormat("en-CA", {
+                timeZone: "Asia/Kolkata",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+            }).formatToParts(parsed);
+
+            const year = parts.find((part) => part.type === "year")?.value;
+            const month = parts.find((part) => part.type === "month")?.value;
+            const day = parts.find((part) => part.type === "day")?.value;
+
+            return year && month && day
+                ? `${year}-${month}-${day}`
+                : raw.slice(0, 10);
+        };
+
+        const formatDateIndian = (dateValue) => {
+            const dateKey = getDateKey(dateValue);
+            if (!dateKey || dateKey.length !== 10) return "—";
+
+            const [year, month, day] = dateKey.split("-");
+            if (!year || !month || !day) return "—";
+
+            return `${day}/${month}/${year}`;
+        };
+
+        const todaysAppointments = doctorAppointments.filter(
+            (appointment) => getDateKey(appointment.date) === today
+        );
+
+        const upcomingAppointments = doctorAppointments.filter(
+            (appointment) =>
+                getDateKey(appointment.date) > today &&
+                String(appointment.status || "").toLowerCase() !== "completed"
+        );
+
+        const getPatientName = (patientId) => {
+            const patient = patientById[Number(patientId)];
+
+            if (!patient) {
+                return `Patient #${patientId}`;
+            }
+
+            return `${patient.first_name || ""} ${patient.last_name || ""}`.trim();
+        };
+
+        const getBranchName = () => {
+            const branch = branches.find(
+                (item) => Number(item.branch_id) === Number(branchId)
+            );
+
+            return branch?.branch_name ||
+                (Number(branchId) === 1 ? "CityCare Hospital - Surat Branch" :
+                    Number(branchId) === 2 ? "CityCare Hospital - Valsad Branch" :
+                        "Hospital Branch");
+        };
+
+        return (
+            <div className="app">
+                <main
+                    className="main-content"
+                    style={{ marginLeft: 0, width: "100%" }}
+                >
+                    <header className="topbar">
+                        <div className="topbar-left">
+                            <div className="page-heading">
+                                <h1>Doctor Portal</h1>
+                                <p>
+                                    Welcome back, Dr. {getUserDisplayName()}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="topbar-right">
+                            <div className="topbar-profile">
+                                <div className="profile-avatar">
+                                    {(getUserDisplayName()[0] || "D").toUpperCase()}
+                                </div>
+
+                                <div className="profile-details">
+                                    <strong>{getUserDisplayName()}</strong>
+                                    <span>Doctor</span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                className="primary-action"
+                                onClick={() => {
+                                    setAuthenticatedUser(null);
+                                    setSelectedRole(null);
+                                    setSelectedAuthBranch(null);
+                                    setCurrentPage("dashboard");
+                                    setSelectedBranch("all");
+                                }}
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    </header>
+
+                    <section className="dashboard-content">
+
+                        {/* PROFILE HEADER */}
+                        <div className="page-section-header">
+                            <div>
+                                <h2>My Dashboard</h2>
+                                <p>
+                                    {authenticatedUser?.profile?.specialization ||
+                                        "Medical professional"} · {getBranchName()}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* DOCTOR PROFILE */}
+                        <div
+                            className="data-card"
+                            style={{
+                                marginBottom: "24px",
+                                padding: "20px"
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "16px",
+                                    flexWrap: "wrap"
+                                }}
+                            >
+                                <div
+                                    className="profile-avatar"
+                                    style={{
+                                        width: "58px",
+                                        height: "58px",
+                                        fontSize: "22px"
+                                    }}
+                                >
+                                    {(getUserDisplayName()[0] || "D").toUpperCase()}
+                                </div>
+
+                                <div style={{ flex: 1, minWidth: "220px" }}>
+                                    <h3 style={{ margin: 0 }}>
+                                        Dr. {getUserDisplayName()}
+                                    </h3>
+                                    <p style={{ margin: "5px 0", color: "#64748b" }}>
+                                        {authenticatedUser?.profile?.specialization ||
+                                            "Doctor"}
+                                    </p>
+                                    <span style={{ color: "#64748b", fontSize: "13px" }}>
+                                        Doctor ID: D{doctorId} · {getBranchName()}
+                                    </span>
+                                </div>
+
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: "22px",
+                                        flexWrap: "wrap"
+                                    }}
+                                >
+                                    <div>
+                                        <span style={{ color: "#64748b", fontSize: "12px" }}>
+                                            Qualification
+                                        </span>
+                                        <strong style={{ display: "block" }}>
+                                            {authenticatedUser?.profile?.qualification || "—"}
+                                        </strong>
+                                    </div>
+
+                                    <div>
+                                        <span style={{ color: "#64748b", fontSize: "12px" }}>
+                                            Experience
+                                        </span>
+                                        <strong style={{ display: "block" }}>
+                                            {authenticatedUser?.profile?.experience_years ?? "—"} years
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* SUMMARY CARDS */}
+                        <div className="page-stat-grid">
+                            <div className="page-stat-card">
+                                <CalendarDays size={22} />
+                                <div>
+                                    <span>My Appointments</span>
+                                    <strong>{doctorAppointments.length}</strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card green-card">
+                                <Clock3 size={22} />
+                                <div>
+                                    <span>Today's Appointments</span>
+                                    <strong>{todaysAppointments.length}</strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card purple-card">
+                                <Users size={22} />
+                                <div>
+                                    <span>My Patients</span>
+                                    <strong>{doctorPatients.length}</strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card orange-card">
+                                <FileText size={22} />
+                                <div>
+                                    <span>Doctor Notes</span>
+                                    <strong>{doctorNotesForUser.length}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        {completionError && (
+                            <div
+                                style={{
+                                    marginTop: "16px",
+                                    padding: "12px 14px",
+                                    borderRadius: "9px",
+                                    background: "#fef2f2",
+                                    border: "1px solid #fecaca",
+                                    color: "#b91c1c",
+                                    fontSize: "13px"
+                                }}
+                            >
+                                {completionError}
+                            </div>
+                        )}
+
+                        {/* TODAY'S APPOINTMENTS */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "24px" }}
+                        >
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>Today's Appointments</h3>
+                                    <p>Appointments scheduled for today</p>
+                                </div>
+                            </div>
+
+                            {todaysAppointments.length === 0 ? (
+                                <div className="table-empty">
+                                    No appointments scheduled for today.
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Appointment</th>
+                                                <th>Patient</th>
+                                                <th>Time</th>
+                                                <th>Reason</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {todaysAppointments.map((appointment) => (
+                                                <tr key={appointment.appointment_id}>
+                                                    <td>
+                                                        <span className="id-badge orange-id">
+                                                            A{appointment.appointment_id}
+                                                        </span>
+                                                    </td>
+
+                                                    <td>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setSelectedDoctorPatient({
+                                                                    patient: patientById[Number(appointment.patient_id)],
+                                                                    appointment
+                                                                })
+                                                            }
+                                                            style={{
+                                                                background: "none",
+                                                                border: "none",
+                                                                padding: 0,
+                                                                cursor: "pointer",
+                                                                textAlign: "left"
+                                                            }}
+                                                        >
+                                                            <strong style={{ color: "#2563eb" }}>
+                                                                {getPatientName(appointment.patient_id)}
+                                                            </strong>
+                                                            <span style={{
+                                                                display: "block",
+                                                                color: "#64748b",
+                                                                fontSize: "12px",
+                                                                marginTop: "3px"
+                                                            }}>
+                                                                P{appointment.patient_id} · View Details
+                                                            </span>
+                                                        </button>
+                                                    </td>
+
+                                                    <td>{appointment.time || "—"}</td>
+
+                                                    <td>
+                                                        {appointment.reason || "—"}
+                                                    </td>
+
+                                                    <td>
+                                                        <div
+                                                            style={{
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                gap: "8px",
+                                                                flexWrap: "wrap"
+                                                            }}
+                                                        >
+                                                            <span
+                                                                className={`status-badge ${
+                                                                    String(
+                                                                        appointment.status || "Scheduled"
+                                                                    ).toLowerCase() === "completed"
+                                                                        ? "status-green"
+                                                                        : "status-blue"
+                                                                }`}
+                                                            >
+                                                                {appointment.status || "Scheduled"}
+                                                            </span>
+
+                                                            {String(
+                                                                appointment.status || "Scheduled"
+                                                            ).toLowerCase() !== "completed" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        handleCompleteAppointment(
+                                                                            appointment.appointment_id
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        completingAppointmentId ===
+                                                                        Number(
+                                                                            appointment.appointment_id
+                                                                        )
+                                                                    }
+                                                                    style={{
+                                                                        padding: "7px 12px",
+                                                                        border: "1px solid #bbf7d0",
+                                                                        background: "#f0fdf4",
+                                                                        color: "#15803d",
+                                                                        borderRadius: "8px",
+                                                                        fontSize: "12px",
+                                                                        fontWeight: 600,
+                                                                        cursor:
+                                                                            completingAppointmentId ===
+                                                                            Number(
+                                                                                appointment.appointment_id
+                                                                            )
+                                                                                ? "not-allowed"
+                                                                                : "pointer",
+                                                                        opacity:
+                                                                            completingAppointmentId ===
+                                                                            Number(
+                                                                                appointment.appointment_id
+                                                                            )
+                                                                                ? 0.6
+                                                                                : 1
+                                                                    }}
+                                                                >
+                                                                    {completingAppointmentId ===
+                                                                    Number(
+                                                                        appointment.appointment_id
+                                                                    )
+                                                                        ? "Completing..."
+                                                                        : "Complete"}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* UPCOMING APPOINTMENTS */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "24px" }}
+                        >
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>Upcoming Appointments</h3>
+                                    <p>Your upcoming patient appointments</p>
+                                </div>
+                            </div>
+
+                            {upcomingAppointments.length === 0 ? (
+                                <div className="table-empty">
+                                    No upcoming appointments.
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Appointment</th>
+                                                <th>Patient</th>
+                                                <th>Date</th>
+                                                <th>Time</th>
+                                                <th>Reason</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {upcomingAppointments.slice(0, 8).map(
+                                                (appointment) => (
+                                                    <tr key={appointment.appointment_id}>
+                                                        <td>A{appointment.appointment_id}</td>
+
+                                                        <td>
+                                                            {getPatientName(
+                                                                appointment.patient_id
+                                                            )}
+                                                        </td>
+
+                                                        <td>
+                                                            {formatDateIndian(appointment.date)}
+                                                        </td>
+
+                                                        <td>
+                                                            {appointment.time || "—"}
+                                                        </td>
+
+                                                        <td>
+                                                            {appointment.reason || "—"}
+                                                        </td>
+
+                                                        <td>
+                                                            <span
+                                                                className={`status-badge ${
+                                                                    String(
+                                                                        appointment.status || "Scheduled"
+                                                                    ).toLowerCase() === "completed"
+                                                                        ? "status-green"
+                                                                        : "status-blue"
+                                                                }`}
+                                                            >
+                                                                {appointment.status || "Scheduled"}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* MY PATIENTS */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "24px" }}
+                        >
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>My Patients</h3>
+                                    <p>Patients associated with your appointments</p>
+                                </div>
+                            </div>
+
+                            {doctorPatients.length === 0 ? (
+                                <div className="table-empty">
+                                    No patients assigned to you yet.
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Patient</th>
+                                                <th>Patient ID</th>
+                                                <th>Gender</th>
+                                                <th>Blood Group</th>
+                                                <th>Phone</th>
+                                                <th>Allergies</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {doctorPatients.map((patient) => (
+                                                <tr key={patient.patient_id}>
+                                                    <td>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setSelectedDoctorPatient({
+                                                                    patient,
+                                                                    appointment:
+                                                                        doctorAppointments.find(
+                                                                            (appointment) =>
+                                                                                Number(appointment.patient_id) ===
+                                                                                Number(patient.patient_id)
+                                                                        )
+                                                                })
+                                                            }
+                                                            style={{
+                                                                background: "none",
+                                                                border: "none",
+                                                                padding: 0,
+                                                                cursor: "pointer",
+                                                                textAlign: "left"
+                                                            }}
+                                                        >
+                                                            <strong style={{ color: "#2563eb" }}>
+                                                                {patient.first_name}{" "}
+                                                                {patient.last_name || ""}
+                                                            </strong>
+                                                        </button>
+                                                    </td>
+
+                                                    <td>P{patient.patient_id}</td>
+                                                    <td>{patient.gender || "—"}</td>
+                                                    <td>{patient.blood_group || "—"}</td>
+                                                    <td>{patient.phone || "—"}</td>
+                                                    <td>{patient.allergies || "None recorded"}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* CLINICAL INFORMATION */}
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                                gap: "24px",
+                                marginTop: "24px"
+                            }}
+                        >
+                            {/* NOTES */}
+                            <div className="data-card">
+                                <div className="data-card-header">
+                                    <div>
+                                        <h3>My Doctor Notes</h3>
+                                        <p>Clinical notes recorded by you</p>
+                                    </div>
+                                </div>
+
+                                {doctorNotesForUser.length === 0 ? (
+                                    <div className="table-empty">
+                                        No clinical notes found.
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: "0 20px 20px" }}>
+                                        {doctorNotesForUser.slice(0, 5).map(
+                                            (note, index) => (
+                                                <div
+                                                    key={note._id || index}
+                                                    style={{
+                                                        padding: "14px 0",
+                                                        borderBottom:
+                                                            index <
+                                                            Math.min(
+                                                                doctorNotesForUser.length,
+                                                                5
+                                                            ) - 1
+                                                                ? "1px solid #e2e8f0"
+                                                                : "none"
+                                                    }}
+                                                >
+                                                    <strong>
+                                                        {getPatientName(note.patient_id)}
+                                                    </strong>
+
+                                                    <p style={{
+                                                        margin: "6px 0",
+                                                        color: "#475569",
+                                                        fontSize: "13px"
+                                                    }}>
+                                                        {note.note ||
+                                                            note.notes ||
+                                                            note.content ||
+                                                            note.diagnosis ||
+                                                            "Clinical note"}
+                                                    </p>
+
+                                                    {note.diagnosis && (
+                                                        <span style={{
+                                                            color: "#64748b",
+                                                            fontSize: "12px"
+                                                        }}>
+                                                            Diagnosis: {note.diagnosis}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* VITALS */}
+                            <div className="data-card">
+                                <div className="data-card-header">
+                                    <div>
+                                        <h3>Recent IoT Vitals</h3>
+                                        <p>Latest available patient vital records</p>
+                                    </div>
+                                </div>
+
+                                {vitals.length === 0 ? (
+                                    <div className="table-empty">
+                                        No IoT vitals available.
+                                    </div>
+                                ) : (
+                                    <div className="table-wrapper">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Patient</th>
+                                                    <th>Heart Rate</th>
+                                                    <th>SpO₂</th>
+                                                    <th>Temperature</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                {vitals
+                                                    .filter((vital) =>
+                                                        doctorPatientIds.includes(
+                                                            Number(vital.patient_id)
+                                                        )
+                                                    )
+                                                    .slice(0, 6)
+                                                    .map((vital, index) => (
+                                                        <tr key={vital._id || index}>
+                                                            <td>
+                                                                {getPatientName(
+                                                                    vital.patient_id
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                {vital.heart_rate ??
+                                                                    vital.hr ??
+                                                                    "—"}
+                                                            </td>
+                                                            <td>
+                                                                {vital.spo2 ??
+                                                                    vital.spO2 ??
+                                                                    "—"}
+                                                            </td>
+                                                            <td>
+                                                                {vital.temperature ??
+                                                                    vital.temp ??
+                                                                    "—"}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                    </section>
+                {/* PATIENT DETAILS MODAL */}
+                {selectedDoctorPatient && selectedDoctorPatient.patient && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            background: "rgba(15, 23, 42, 0.55)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 2000,
+                            padding: "24px"
+                        }}
+                        onClick={() => setSelectedDoctorPatient(null)}
+                    >
+                        <div
+                            className="data-card"
+                            style={{
+                                width: "min(900px, 100%)",
+                                maxHeight: "90vh",
+                                overflowY: "auto",
+                                background: "#fff",
+                                borderRadius: "16px",
+                                boxShadow: "0 20px 50px rgba(0,0,0,0.18)"
+                            }}
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            {(() => {
+                                const patient = selectedDoctorPatient.patient;
+                                const appointment = selectedDoctorPatient.appointment;
+
+                                const patientAppointments = doctorAppointments
+                                    .filter(
+                                        (item) =>
+                                            Number(item.patient_id) ===
+                                            Number(patient.patient_id)
+                                    )
+                                    .sort((a, b) => {
+                                        const first = `${a.date || ""} ${a.time || ""}`;
+                                        const second = `${b.date || ""} ${b.time || ""}`;
+                                        return second.localeCompare(first);
+                                    });
+
+                                const patientAdmissions = admissions.filter(
+                                    (admission) =>
+                                        Number(admission.patient_id) ===
+                                        Number(patient.patient_id)
+                                );
+
+                                const patientNotes = doctorNotesForUser.filter(
+                                    (note) =>
+                                        Number(note.patient_id) ===
+                                        Number(patient.patient_id)
+                                );
+
+                                const patientVitals = vitals
+                                    .filter(
+                                        (vital) =>
+                                            Number(vital.patient_id) ===
+                                            Number(patient.patient_id)
+                                    )
+                                    .slice(-3)
+                                    .reverse();
+
+                                return (
+                                    <>
+                                        <div
+                                            className="data-card-header"
+                                            style={{
+                                                padding: "20px 24px",
+                                                borderBottom: "1px solid #e5e7eb"
+                                            }}
+                                        >
+                                            <div>
+                                                <h3 style={{ marginBottom: "4px" }}>
+                                                    Patient Details
+                                                </h3>
+                                                <p>
+                                                    {patient.first_name}{" "}
+                                                    {patient.last_name || ""} · P{patient.patient_id}
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedDoctorPatient(null)}
+                                                style={{
+                                                    border: "none",
+                                                    background: "#f1f5f9",
+                                                    borderRadius: "8px",
+                                                    padding: "8px 12px",
+                                                    cursor: "pointer",
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Close
+                                            </button>
+                                        </div>
+
+                                        <div style={{ padding: "24px" }}>
+                                            <div
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns:
+                                                        "repeat(auto-fit, minmax(200px, 1fr))",
+                                                    gap: "14px"
+                                                }}
+                                            >
+                                                {[
+                                                    ["Patient ID", `P${patient.patient_id}`],
+                                                    ["Gender", patient.gender || "—"],
+                                                    ["Blood Group", patient.blood_group || "—"],
+                                                    ["Phone", patient.phone || "—"]
+                                                ].map(([label, value]) => (
+                                                    <div className="page-stat-card" key={label}>
+                                                        <div>
+                                                            <span>{label}</span>
+                                                            <strong>{value}</strong>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns:
+                                                        "repeat(auto-fit, minmax(280px, 1fr))",
+                                                    gap: "20px",
+                                                    marginTop: "22px"
+                                                }}
+                                            >
+                                                <div className="data-card" style={{ padding: "20px" }}>
+                                                    <h4 style={{ marginTop: 0 }}>
+                                                        Patient Information
+                                                    </h4>
+                                                    <p>
+                                                        <strong>Date of Birth:</strong>{" "}
+                                                        {formatDateIndian(patient.date_of_birth)}
+                                                    </p>
+                                                    <p>
+                                                        <strong>Email:</strong>{" "}
+                                                        {patient.email || "—"}
+                                                    </p>
+                                                    <p>
+                                                        <strong>Address:</strong>{" "}
+                                                        {patient.address || "—"}
+                                                    </p>
+                                                    <p>
+                                                        <strong>Allergies:</strong>{" "}
+                                                        {patient.allergies || "None recorded"}
+                                                    </p>
+                                                    <p>
+                                                        <strong>Insurance No:</strong>{" "}
+                                                        {patient.insurance_no || "—"}
+                                                    </p>
+                                                </div>
+
+                                                <div className="data-card" style={{ padding: "20px" }}>
+                                                    <h4 style={{ marginTop: 0 }}>
+                                                        Current Appointment
+                                                    </h4>
+                                                    {appointment ? (
+                                                        <>
+                                                            <p><strong>Appointment:</strong> A{appointment.appointment_id}</p>
+                                                            <p><strong>Date:</strong> {formatDateIndian(appointment.date)}</p>
+                                                            <p><strong>Time:</strong> {appointment.time || "—"}</p>
+                                                            <p><strong>Reason:</strong> {appointment.reason || "—"}</p>
+                                                            <p><strong>Status:</strong> {appointment.status || "Scheduled"}</p>
+                                                        </>
+                                                    ) : (
+                                                        <p>No appointment selected.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="data-card" style={{ marginTop: "20px", padding: "20px" }}>
+                                                <h4 style={{ marginTop: 0 }}>Appointment History</h4>
+                                                {patientAppointments.length === 0 ? (
+                                                    <p>No appointment history available.</p>
+                                                ) : (
+                                                    <div className="table-wrapper">
+                                                        <table>
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Appointment</th>
+                                                                    <th>Date</th>
+                                                                    <th>Reason</th>
+                                                                    <th>Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {patientAppointments.map((item) => (
+                                                                    <tr key={item.appointment_id}>
+                                                                        <td>A{item.appointment_id}</td>
+                                                                        <td>{formatDateIndian(item.date)}</td>
+                                                                        <td>{item.reason || "—"}</td>
+                                                                        <td>{item.status || "—"}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns:
+                                                        "repeat(auto-fit, minmax(280px, 1fr))",
+                                                    gap: "20px",
+                                                    marginTop: "20px"
+                                                }}
+                                            >
+                                                <div className="data-card" style={{ padding: "20px" }}>
+                                                    <h4 style={{ marginTop: 0 }}>Admissions</h4>
+                                                    {patientAdmissions.length === 0 ? (
+                                                        <p>No admission records available.</p>
+                                                    ) : (
+                                                        patientAdmissions.map((admission) => (
+                                                            <div key={admission.admission_id} style={{ padding: "10px 0", borderBottom: "1px solid #e5e7eb" }}>
+                                                                <strong>Admission A{admission.admission_id}</strong>
+                                                                <p style={{ margin: "5px 0" }}>
+                                                                    Room: {admission.room_id ? `R${admission.room_id}` : "—"}
+                                                                </p>
+                                                                <p style={{ margin: "5px 0" }}>
+                                                                    Status: {admission.status || "—"}
+                                                                </p>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+
+                                                <div className="data-card" style={{ padding: "20px" }}>
+                                                    <h4 style={{ marginTop: 0 }}>Recent IoT Vitals</h4>
+                                                    {patientVitals.length === 0 ? (
+                                                        <p>No IoT vitals available.</p>
+                                                    ) : (
+                                                        patientVitals.map((vital, index) => (
+                                                            <div key={vital._id || index} style={{ padding: "10px 0", borderBottom: "1px solid #e5e7eb" }}>
+                                                                <strong>
+                                                                    Heart Rate: {vital.heart_rate ?? vital.hr ?? "—"} bpm
+                                                                </strong>
+                                                                <p style={{ margin: "5px 0" }}>
+                                                                    SpO₂: {vital.spo2 ?? vital.spO2 ?? "—"} · Temp: {vital.temperature ?? vital.temp ?? "—"}
+                                                                </p>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="data-card" style={{ marginTop: "20px", padding: "20px" }}>
+                                                <h4 style={{ marginTop: 0 }}>Doctor Notes</h4>
+                                                {patientNotes.length === 0 ? (
+                                                    <p>No doctor notes available for this patient.</p>
+                                                ) : (
+                                                    patientNotes.map((note, index) => (
+                                                        <div key={note._id || index} style={{ padding: "12px 0", borderBottom: "1px solid #e5e7eb" }}>
+                                                            <strong>{note.diagnosis || "Clinical Note"}</strong>
+                                                            <p style={{ margin: "6px 0" }}>
+                                                                {note.notes || note.observations || "No additional notes recorded."}
+                                                            </p>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                )}
+
+                </main>
+            </div>
+        );
+    };
+
+    const renderPatientPortal = () => {
+        const patientId = authenticatedUser?.patient_id;
+        const branchId = authenticatedUser?.branch_id;
+
+        const patientAppointments = appointments.filter(
+            (appointment) =>
+                Number(appointment.patient_id) === Number(patientId) &&
+                Number(appointment.branch_id) === Number(branchId)
+        );
+
+        const patientAdmissions = admissions.filter(
+            (admission) => Number(admission.patient_id) === Number(patientId)
+        );
+
+        const patientBills = bills.filter(
+            (bill) => Number(bill.patient_id) === Number(patientId)
+        );
+
+        const patientNotes = doctorNotes.filter(
+            (note) => Number(note.patient_id) === Number(patientId)
+        );
+
+        const patientVitals = vitals.filter(
+            (vital) => Number(vital.patient_id) === Number(patientId)
+        );
+
+        return (
+            <div className="app">
+                <main className="main-content" style={{ marginLeft: 0, width: "100%" }}>
+                    <header className="topbar">
+                        <div className="topbar-left">
+                            <div className="page-heading">
+                                <h1>Patient Portal</h1>
+                                <p>Welcome back, {getUserDisplayName()}</p>
+                            </div>
+                        </div>
+
+                        <div className="topbar-right">
+                            <div className="topbar-profile">
+                                <div className="profile-avatar">
+                                    {(getUserDisplayName()[0] || "P").toUpperCase()}
+                                </div>
+                                <div className="profile-details">
+                                    <strong>{getUserDisplayName()}</strong>
+                                    <span>Patient</span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                className="primary-action"
+                                onClick={() => {
+                                    setAuthenticatedUser(null);
+                                    setSelectedRole(null);
+                                    setSelectedAuthBranch(null);
+                                    setCurrentPage("dashboard");
+                                }}
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    </header>
+
+                    <section className="dashboard-content">
+                        <div className="page-section-header">
+                            <div>
+                                <h2>My Health Overview</h2>
+                                <p>Your appointments, medical information and billing</p>
+                            </div>
+                        </div>
+
+                        <div className="page-stat-grid">
+                            <div className="page-stat-card">
+                                <CalendarDays size={22} />
+                                <div>
+                                    <span>Appointments</span>
+                                    <strong>{patientAppointments.length}</strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card green-card">
+                                <BedDouble size={22} />
+                                <div>
+                                    <span>Admissions</span>
+                                    <strong>{patientAdmissions.length}</strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card purple-card">
+                                <FileText size={22} />
+                                <div>
+                                    <span>Medical Notes</span>
+                                    <strong>{patientNotes.length}</strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card orange-card">
+                                <Activity size={22} />
+                                <div>
+                                    <span>Vital Records</span>
+                                    <strong>{patientVitals.length}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="data-card" style={{ marginTop: "24px" }}>
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>My Appointments</h3>
+                                    <p>Your upcoming and previous appointments</p>
+                                </div>
+                            </div>
+
+                            {patientAppointments.length === 0 ? (
+                                <div className="table-empty">No appointments found.</div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Appointment</th>
+                                                <th>Doctor</th>
+                                                <th>Date</th>
+                                                <th>Time</th>
+                                                <th>Reason</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {patientAppointments.map((appointment) => (
+                                                <tr key={appointment.appointment_id}>
+                                                    <td>A{appointment.appointment_id}</td>
+                                                    <td>Dr. {appointment.doctor_id}</td>
+                                                    <td>{appointment.date ? new Date(appointment.date).toLocaleDateString() : "—"}</td>
+                                                    <td>{appointment.time || "—"}</td>
+                                                    <td>{appointment.reason || "—"}</td>
+                                                    <td>
+                                                        <span className="status-badge status-blue">
+                                                            {appointment.status || "Scheduled"}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                </main>
+            </div>
+        );
+    };
+
+
+    // =====================================================
     // MAIN UI
     // =====================================================
 
-    if (!selectedRole) {
+    // Once authentication succeeds, route the user according to their role.
+    if (authenticatedUser?.role === "doctor") {
+        return renderDoctorPortal();
+    }
+
+    if (authenticatedUser?.role === "patient") {
+        return renderPatientPortal();
+    }
+
+    if (!selectedRole && !authenticatedUser) {
         return (
             <RoleSelection
                 onSelectRole={(role) => {
@@ -4276,14 +5648,30 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
     }
 
     if (
-        selectedRole === "admin" ||
-        ((selectedRole === "doctor" || selectedRole === "patient") &&
-            selectedAuthBranch)
+        !authenticatedUser &&
+        (
+            selectedRole === "admin" ||
+            ((selectedRole === "doctor" || selectedRole === "patient") &&
+                selectedAuthBranch)
+        )
     ) {
         return (
             <LoginPage
                 role={selectedRole}
                 branch={selectedAuthBranch}
+                onLoginSuccess={(user) => {
+                    setAuthenticatedUser(user);
+
+                    // Admin stays on the existing dashboard.
+                    if (user?.role === "admin") {
+                        setCurrentPage("dashboard");
+                        setSelectedBranch("all");
+                    } else if (user?.branch_id) {
+                        // Doctor/patient portal data should be restricted to
+                        // their authenticated hospital branch.
+                        setSelectedBranch(String(user.branch_id));
+                    }
+                }}
                 onBack={() => {
                     if (selectedRole === "admin") {
                         setSelectedRole(null);

@@ -1346,6 +1346,90 @@ app.post(
 
 
 // =====================================================
+// COMPLETE APPOINTMENT
+// =====================================================
+
+// Mark an appointment as completed
+app.put(
+    "/api/appointments/:appointmentId/complete",
+    async (req, res) => {
+
+        const appointmentId =
+            Number(req.params.appointmentId);
+
+        if (
+            !Number.isInteger(appointmentId) ||
+            appointmentId <= 0
+        ) {
+            return res.status(400).json({
+                error: "Invalid appointment ID."
+            });
+        }
+
+        try {
+
+            // Call the existing PostgreSQL procedure
+            // that changes the appointment status to Completed.
+            await pool.query(
+                `
+                CALL CompleteAppointment($1)
+                `,
+                [appointmentId]
+            );
+
+            // Fetch the updated appointment so the
+            // frontend immediately receives the new status.
+            const result =
+                await pool.query(
+                    `
+                    SELECT
+                        appointment_id,
+                        patient_id,
+                        doctor_id,
+                        branch_id,
+                        date,
+                        time,
+                        status,
+                        reason,
+                        appointment_type
+                    FROM APPOINTMENT
+                    WHERE appointment_id = $1
+                    `,
+                    [appointmentId]
+                );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({
+                    error:
+                        "Appointment not found after completion."
+                });
+            }
+
+            return res.json({
+                message:
+                    "Appointment completed successfully.",
+                appointment:
+                    result.rows[0]
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Complete Appointment Error:",
+                error.message
+            );
+
+            return res.status(500).json({
+                error:
+                    error.message ||
+                    "Failed to complete appointment."
+            });
+        }
+    }
+);
+
+
+// =====================================================
 // ADMISSION APIs
 // =====================================================
 
@@ -2581,6 +2665,9 @@ app.post(
                             per.first_name,
                             per.last_name,
                             d.specialization,
+                            d.qualification,
+                            d.experience_years,
+                            d.consultation_fee,
                             d.branch_id
                         FROM DOCTOR d
                         JOIN PERSON per

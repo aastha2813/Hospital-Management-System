@@ -12,7 +12,7 @@ import {
     UserRound,
 } from "lucide-react";
 
-function LoginPage({ role, branch, onBack }) {
+function LoginPage({ role, branch, onBack, onLoginSuccess }) {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -71,6 +71,8 @@ function LoginPage({ role, branch, onBack }) {
                     : result.user.email
                 }!`
             );
+
+            onLoginSuccess(result.user);
         } catch (error) {
             setMessage(
                 error.message || "Login failed. Please check your credentials."

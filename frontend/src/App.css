@@ -2526,4 +2526,154 @@ button {
         border-radius: 0;
     }
 
+}/* =========================================================
+   CITYCARE UI REFINEMENT - CSS ONLY
+   ========================================================= */
+
+:root {
+    --ui-primary: #2563eb;
+    --ui-primary-dark: #1d4ed8;
+    --ui-page-bg: #f5f8fc;
+    --ui-border: #dce5f0;
+    --ui-text: #1e293b;
+    --ui-muted: #64748b;
+}
+
+body {
+    background: var(--ui-page-bg);
+    color: var(--ui-text);
+}
+
+.main-content {
+    background: var(--ui-page-bg);
+}
+
+.topbar {
+    min-height: 76px;
+    height: auto;
+    border-bottom: 1px solid var(--ui-border);
+}
+
+.page-heading h1 {
+    font-size: 25px;
+    letter-spacing: 0;
+}
+
+.welcome-card {
+    background: #2563eb;
+    border: 1px solid #1d4ed8;
+    border-radius: 8px;
+}
+
+.welcome-card::after {
+    display: none;
+}
+
+.stat-card,
+.dashboard-card,
+.data-card,
+.page-stat-card,
+.branch-detail-card,
+.room-card,
+.note-card,
+.setting-item,
+.quick-action {
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.stat-card:hover,
+.quick-action:hover,
+.branch-detail-card:hover,
+.room-card:hover,
+.note-card:hover,
+.setting-item:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.stat-card,
+.quick-action,
+.branch-detail-card,
+.room-card,
+.note-card,
+.setting-item {
+    transition: border-color 0.15s ease;
+}
+
+.primary-action {
+    background: var(--ui-primary) !important;
+    border: 1px solid var(--ui-primary) !important;
+    border-radius: 6px;
+    box-shadow: none;
+    transition: background-color 0.15s ease;
+}
+
+.primary-action:hover {
+    background: var(--ui-primary-dark) !important;
+    transform: none;
+    box-shadow: none;
+}
+
+.branch-dropdown-trigger,
+.branch-dropdown-menu,
+.search-box,
+.notification-button,
+.topbar-profile {
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.branch-dropdown-menu {
+    animation: none;
+    border-color: var(--ui-border);
+}
+
+.branch-dropdown-trigger.open,
+.search-box:focus-within {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.table-wrapper thead {
+    background: #eff5fc;
+}
+
+.table-wrapper th {
+    color: #334155;
+    font-size: 11px;
+    padding: 13px 16px;
+}
+
+.table-wrapper td {
+    padding: 13px 16px;
+}
+
+.table-wrapper tbody tr {
+    transition: none;
+}
+
+.table-wrapper tbody tr:hover {
+    background: #f5f9ff;
+}
+
+.status-badge,
+.scheduled-badge,
+.completed-badge,
+.room-status {
+    border-radius: 5px !important;
+}
+
+.dashboard-content {
+    padding-top: 26px;
+}
+
+@media (max-width: 650px) {
+    .welcome-card {
+        border-radius: 8px;
+    }
+
+    .dashboard-content {
+        padding-top: 18px;
+    }
 }

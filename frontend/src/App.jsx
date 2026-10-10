@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 
 import {
     Search,
@@ -138,14 +138,14 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
     // =====================================================
 
     const [addAppointmentOpen, setAddAppointmentOpen] = useState(false);
+    const [patientBookingOpen, setPatientBookingOpen] = useState(false);
 
     const [appointmentForm, setAppointmentForm] = useState({
         patient_id: "",
-        doctor_id: "",
         date: new Date().toISOString().split("T")[0],
-        time: "",
         reason: "",
-        appointment_type: "Consultation"
+        appointment_type: "Consultation",
+        preferred_doctor_id: ""
     });
 
     const [addingAppointment, setAddingAppointment] = useState(false);
@@ -184,6 +184,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
     // Appointment completion state
     const [completingAppointmentId, setCompletingAppointmentId] = useState(null);
     const [completionError, setCompletionError] = useState("");
+    const [cancellingAppointmentId, setCancellingAppointmentId] = useState(null);
 
 
     // =====================================================
@@ -566,155 +567,6 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
     // APPOINTMENT HANDLERS
     // =====================================================
 
-    const findDoctorForProblem = (
-        problemText,
-        patientId
-    ) => {
-
-        if (!problemText || !patientId) {
-            return null;
-        }
-
-        const patient =
-            patients.find(
-                (item) =>
-                    Number(item.patient_id) ===
-                    Number(patientId)
-            );
-
-        if (!patient) {
-            return null;
-        }
-
-        const text =
-            problemText
-                .toLowerCase()
-                .trim();
-
-        let specialization = "General Medicine";
-
-        // Cardiology-related problems
-        if (
-            /chest|heart|cardiac|palpitation|blood pressure|hypertension|breathing problem|shortness of breath/.test(text)
-        ) {
-            specialization = "Cardiology";
-
-        // Neurology-related problems
-        } else if (
-            /migraine|dizziness|seizure|vertigo|memory|neurological|numbness/.test(text)
-        ) {
-            specialization = "Neurology";
-
-        // Orthopedics-related problems
-        } else if (
-            /bone|joint|knee|back pain|fracture|shoulder|arthritis|muscle|sprain|leg pain/.test(text)
-        ) {
-            specialization = "Orthopedics";
-
-        // Pediatrics-related problems
-        } else if (
-            /child|baby|infant|pediatric|paediatric|kid/.test(text)
-        ) {
-            specialization = "Pediatrics";
-
-        // Emergency-related problems
-        } else if (
-            /accident|severe injury|trauma|bleeding|unconscious|emergency/.test(text)
-        ) {
-            specialization = "Emergency Medicine";
-
-        // General Medicine-related problems
-        // Headache is intentionally included here.
-        } else if (
-            /fever|headache|cold|cough|flu|weakness|fatigue|stomach|vomiting|diarrhea|infection|body pain|general pain/.test(text)
-        ) {
-            specialization = "General Medicine";
-        }
-
-        const branchDoctors =
-            doctors.filter(
-                (doctor) =>
-                    Number(doctor.branch_id) ===
-                    Number(patient.branch_id)
-            );
-
-        const matchedDoctor =
-            branchDoctors.find((doctor) => {
-
-                const doctorSpecialization =
-                    String(
-                        doctor.specialization || ""
-                    )
-                        .toLowerCase()
-                        .trim();
-
-                if (
-                    specialization === "Cardiology" &&
-                    (
-                        doctorSpecialization === "cardiology" ||
-                        doctorSpecialization === "cardiologist"
-                    )
-                ) {
-                    return true;
-                }
-
-                if (
-                    specialization === "Neurology" &&
-                    (
-                        doctorSpecialization === "neurology" ||
-                        doctorSpecialization === "neurologist"
-                    )
-                ) {
-                    return true;
-                }
-
-                if (
-                    specialization === "Orthopedics" &&
-                    (
-                        doctorSpecialization === "orthopedics" ||
-                        doctorSpecialization === "orthopedic" ||
-                        doctorSpecialization === "orthopaedics"
-                    )
-                ) {
-                    return true;
-                }
-
-                if (
-                    specialization === "Pediatrics" &&
-                    (
-                        doctorSpecialization === "pediatrics" ||
-                        doctorSpecialization === "pediatrician"
-                    )
-                ) {
-                    return true;
-                }
-
-                if (
-                    specialization === "Emergency Medicine" &&
-                    (
-                        doctorSpecialization === "emergency medicine" ||
-                        doctorSpecialization === "emergency physician"
-                    )
-                ) {
-                    return true;
-                }
-
-                if (
-                    specialization === "General Medicine" &&
-                    doctorSpecialization === "general medicine"
-                ) {
-                    return true;
-                }
-
-                return false;
-            });
-
-        // Do not randomly assign the first doctor in the branch.
-        return matchedDoctor || null;
-
-    };
-
-
     const handleAppointmentFormChange = (event) => {
 
         const {
@@ -722,44 +574,10 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
             value
         } = event.target;
 
-        setAppointmentForm((previous) => {
-
-            const next = {
-                ...previous,
-                [name]: value
-            };
-
-            if (
-                name === "patient_id" ||
-                name === "reason"
-            ) {
-
-                const patientId =
-                    name === "patient_id"
-                        ? value
-                        : previous.patient_id;
-
-                const reason =
-                    name === "reason"
-                        ? value
-                        : previous.reason;
-
-                const doctor =
-                    findDoctorForProblem(
-                        reason,
-                        patientId
-                    );
-
-                next.doctor_id =
-                    doctor
-                        ? String(doctor.doctor_id)
-                        : "";
-
-            }
-
-            return next;
-
-        });
+        setAppointmentForm((previous) => ({
+            ...previous,
+            [name]: value
+        }));
 
         setAppointmentFormError("");
         setAppointmentFormSuccess("");
@@ -771,13 +589,12 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
         setAppointmentForm({
             patient_id: "",
-            doctor_id: "",
             date: new Date()
                 .toISOString()
                 .split("T")[0],
-            time: "",
             reason: "",
-            appointment_type: "Consultation"
+            appointment_type: "Consultation",
+            preferred_doctor_id: ""
         });
 
         setAppointmentFormError("");
@@ -792,9 +609,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
         if (
             !appointmentForm.patient_id ||
-            !appointmentForm.doctor_id ||
             !appointmentForm.date ||
-            !appointmentForm.time ||
             !appointmentForm.reason.trim() ||
             !appointmentForm.appointment_type
         ) {
@@ -807,74 +622,36 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
         }
 
-        const selectedPatient =
-            patients.find(
-                (patient) =>
-                    Number(patient.patient_id) ===
-                    Number(appointmentForm.patient_id)
-            );
-
-        const selectedDoctor =
-            doctors.find(
-                (doctor) =>
-                    Number(doctor.doctor_id) ===
-                    Number(appointmentForm.doctor_id)
-            );
-
-        if (!selectedPatient || !selectedDoctor) {
-
-            setAppointmentFormError(
-                "Unable to automatically assign a doctor for this patient."
-            );
-
-            return;
-
-        }
-
-        if (
-            Number(selectedPatient.branch_id) !==
-            Number(selectedDoctor.branch_id)
-        ) {
-
-            setAppointmentFormError(
-                "The assigned doctor must belong to the patient's branch."
-            );
-
-            return;
-
-        }
-
         try {
 
             setAddingAppointment(true);
             setAppointmentFormError("");
             setAppointmentFormSuccess("");
 
-            await createAppointment({
+            const bookingResponse =
+                await createAppointment({
 
-                patient_id:
-                    Number(
-                        appointmentForm.patient_id
-                    ),
+                    patient_id:
+                        Number(
+                            appointmentForm.patient_id
+                        ),
 
-                doctor_id:
-                    Number(
-                        appointmentForm.doctor_id
-                    ),
+                    preferred_doctor_id:
+                        appointmentForm.preferred_doctor_id
+                            ? Number(appointmentForm.preferred_doctor_id)
+                            : null,
 
-                date:
-                    appointmentForm.date,
+                    date:
+                        appointmentForm.date,
 
-                time:
-                    appointmentForm.time,
 
-                reason:
-                    appointmentForm.reason.trim(),
+                    reason:
+                        appointmentForm.reason.trim(),
 
-                appointment_type:
-                    appointmentForm.appointment_type
+                    appointment_type:
+                        appointmentForm.appointment_type
 
-            });
+                });
 
             const currentBranchId =
                 selectedBranch === "all"
@@ -890,17 +667,33 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                 updatedAppointments
             );
 
+            const assignedDoctorName =
+                bookingResponse?.assigned_doctor_name ||
+                (
+                    bookingResponse?.assigned_doctor_id
+                        ? `Doctor #${bookingResponse.assigned_doctor_id}`
+                        : ""
+                );
+
+            const allocatedDate =
+                bookingResponse?.appointment_date
+                    ? String(bookingResponse.appointment_date).slice(0, 10)
+                    : appointmentForm.date;
+
+            const allocatedTime =
+                bookingResponse?.appointment_time || "time unavailable";
+
             setAppointmentFormSuccess(
-                `Appointment booked. ${selectedDoctor.first_name ? `Dr. ${selectedDoctor.first_name} ${selectedDoctor.last_name || ""}` : `Doctor #${selectedDoctor.doctor_id}`} (${String(selectedDoctor.specialization || "").toLowerCase() === "general physician" ? "General Medicine" : selectedDoctor.specialization}) has been assigned.`
+                assignedDoctorName
+                    ? `Appointment booked successfully. ${assignedDoctorName} has been assigned. Date: ${allocatedDate}, Time: ${allocatedTime}.`
+                    : `Appointment booked successfully. Date: ${allocatedDate}, Time: ${allocatedTime}. The assigned doctor's name could not be retrieved.`
             );
 
             setAppointmentForm({
                 patient_id: "",
-                doctor_id: "",
                 date: new Date()
                     .toISOString()
                     .split("T")[0],
-                time: "",
                 reason: "",
                 appointment_type: "Consultation"
             });
@@ -924,6 +717,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
         }
 
     };
+
 
 
     // =====================================================
@@ -1202,6 +996,56 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
         }
 
+    };
+
+
+    // =====================================================
+    // CANCEL APPOINTMENT
+    // =====================================================
+
+    const handleCancelAppointment = async (appointmentId) => {
+        if (!appointmentId || cancellingAppointmentId !== null) return;
+
+        const appointment = appointments.find(
+            (item) => Number(item.appointment_id) === Number(appointmentId)
+        );
+
+        if (!appointment) {
+            window.alert("Appointment not found.");
+            return;
+        }
+
+        const status = String(appointment.status || "Scheduled").toLowerCase();
+        if (status === "completed" || status === "cancelled") {
+            window.alert(`This appointment is already ${status}.`);
+            return;
+        }
+
+        if (!window.confirm(`Cancel appointment A${appointmentId}? The appointment record will be preserved.`)) {
+            return;
+        }
+
+        try {
+            setCancellingAppointmentId(Number(appointmentId));
+            const response = await fetch(
+                `http://localhost:5000/api/appointments/${appointmentId}/cancel`,
+                { method: "PUT", headers: { "Content-Type": "application/json" } }
+            );
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to cancel appointment.");
+            }
+
+            const currentBranchId = selectedBranch === "all" ? null : Number(selectedBranch);
+            const updatedAppointments = await getAppointments(currentBranchId);
+            setAppointments(updatedAppointments);
+            window.alert(data.message || `Appointment A${appointmentId} has been cancelled.`);
+        } catch (error) {
+            console.error("Cancel Appointment Error:", error);
+            window.alert(error.message || "Failed to cancel appointment.");
+        } finally {
+            setCancellingAppointmentId(null);
+        }
     };
 
 
@@ -2167,28 +2011,28 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                 <td>
                                                     {
                                                         patient.gender ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
                                                 <td>
                                                     {
                                                         patient.blood_group ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
                                                 <td>
                                                     {
                                                         patient.phone ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
                                                 <td>
                                                     {
                                                         patient.insurance_no ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
@@ -2355,27 +2199,27 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                 <td>
                                                     {
                                                         doctor.specialization ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
                                                 <td>
                                                     {
                                                         doctor.qualification ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
                                                 <td>
                                                     {
                                                         doctor.experience_years ??
-                                                        "—"
+                                                        "â€”"
                                                     }{" "}
                                                     years
                                                 </td>
 
                                                 <td className="money-cell">
-                                                    ₹
+                                                    â‚¹
                                                     {
                                                         doctor.consultation_fee ??
                                                         "0"
@@ -2473,6 +2317,10 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                             Status
                                         </th>
 
+                                        <th>
+                                            Action
+                                        </th>
+
                                     </tr>
 
                                 </thead>
@@ -2516,21 +2364,21 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             ? new Date(
                                                                 appointment.date
                                                             ).toLocaleDateString()
-                                                            : "—"
+                                                            : "â€”"
                                                     }
                                                 </td>
 
                                                 <td>
                                                     {
                                                         appointment.time ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
                                                 <td>
                                                     {
                                                         appointment.appointment_type ||
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
@@ -2551,6 +2399,31 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                         }
                                                     </span>
 
+                                                </td>
+
+                                                <td>
+                                                    {!["completed", "cancelled"].includes(
+                                                        String(appointment.status || "Scheduled").toLowerCase()
+                                                    ) ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCancelAppointment(appointment.appointment_id)}
+                                                            disabled={cancellingAppointmentId === Number(appointment.appointment_id)}
+                                                            style={{
+                                                                padding: "7px 12px",
+                                                                border: "1px solid #dc2626",
+                                                                borderRadius: "6px",
+                                                                background: cancellingAppointmentId === Number(appointment.appointment_id) ? "#fca5a5" : "#fff",
+                                                                color: "#dc2626",
+                                                                cursor: cancellingAppointmentId === Number(appointment.appointment_id) ? "not-allowed" : "pointer",
+                                                                fontWeight: 600
+                                                            }}
+                                                        >
+                                                            {cancellingAppointmentId === Number(appointment.appointment_id) ? "Cancelling..." : "Cancel"}
+                                                        </button>
+                                                    ) : (
+                                                        <span style={{ color: "#6b7280", fontSize: "12px" }}>—</span>
+                                                    )}
                                                 </td>
 
                                             </tr>
@@ -2698,7 +2571,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             ? new Date(
                                                                 admission.admit_date
                                                             ).toLocaleDateString()
-                                                            : "—"
+                                                            : "â€”"
                                                     }
                                                 </td>
 
@@ -2708,7 +2581,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             ? new Date(
                                                                 admission.discharge_date
                                                             ).toLocaleDateString()
-                                                            : "—"
+                                                            : "â€”"
                                                     }
                                                 </td>
 
@@ -2875,7 +2748,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                     <span>
                                         Floor{" "}
                                         {room.floor_no ??
-                                            "—"}
+                                            "â€”"}
                                     </span>
 
                                 </div>
@@ -2957,7 +2830,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                         <div>
                             <span>Total Billing</span>
                             <strong>
-                                ₹{totalBilling.toLocaleString("en-IN")}
+                                â‚¹{totalBilling.toLocaleString("en-IN")}
                             </strong>
                         </div>
 
@@ -2970,7 +2843,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                         <div>
                             <span>Amount Paid</span>
                             <strong>
-                                ₹{totalPaid.toLocaleString("en-IN")}
+                                â‚¹{totalPaid.toLocaleString("en-IN")}
                             </strong>
                         </div>
 
@@ -2983,7 +2856,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                         <div>
                             <span>Outstanding</span>
                             <strong>
-                                ₹{totalOutstanding.toLocaleString("en-IN")}
+                                â‚¹{totalOutstanding.toLocaleString("en-IN")}
                             </strong>
                         </div>
 
@@ -3074,19 +2947,19 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                         ? new Date(
                                                             bill.bill_date
                                                         ).toLocaleDateString()
-                                                        : "—"}
+                                                        : "â€”"}
                                                 </td>
 
                                                 <td className="money-cell total-money">
-                                                    ₹{totalAmount.toLocaleString("en-IN")}
+                                                    â‚¹{totalAmount.toLocaleString("en-IN")}
                                                 </td>
 
                                                 <td className="money-cell paid-money">
-                                                    ₹{amountPaid.toLocaleString("en-IN")}
+                                                    â‚¹{amountPaid.toLocaleString("en-IN")}
                                                 </td>
 
                                                 <td className="money-cell left-money">
-                                                    ₹{amountLeft.toLocaleString("en-IN")}
+                                                    â‚¹{amountLeft.toLocaleString("en-IN")}
                                                 </td>
 
                                                 <td>
@@ -3314,7 +3187,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                                     {vital.heart_rate ??
                                                         vital.heartRate ??
-                                                        "—"}
+                                                        "â€”"}
 
                                                     {(
                                                         vital.heart_rate ??
@@ -3329,7 +3202,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     {
                                                         vital.gsr ??
                                                         vital.gsr_value ??
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
@@ -3338,7 +3211,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     {
                                                         vital.temperature ??
                                                         vital.temp ??
-                                                        "—"
+                                                        "â€”"
                                                     }
 
                                                     {(
@@ -3346,7 +3219,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                         vital.temp
                                                     ) !==
                                                         undefined &&
-                                                        " °C"}
+                                                        " Â°C"}
 
                                                 </td>
 
@@ -3354,7 +3227,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     {
                                                         vital.air_quality ??
                                                         vital.airQuality ??
-                                                        "—"
+                                                        "â€”"
                                                     }
                                                 </td>
 
@@ -3364,7 +3237,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             ? new Date(
                                                                 vital.timestamp
                                                             ).toLocaleString()
-                                                            : "—"
+                                                            : "â€”"
                                                     }
                                                 </td>
 
@@ -3521,7 +3394,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                         </span>
 
                         <h2>
-                            Good Morning, Admin 👋
+                            Good Morning, Admin ðŸ‘‹
                         </h2>
 
                         <p>
@@ -3598,7 +3471,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                 <h2>
                                     {loading
-                                        ? "—"
+                                        ? "â€”"
                                         : patientCount}
                                 </h2>
 
@@ -3633,7 +3506,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                 <h2>
                                     {loading
-                                        ? "—"
+                                        ? "â€”"
                                         : doctorCount}
                                 </h2>
 
@@ -3668,7 +3541,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                 <h2>
                                     {loading
-                                        ? "—"
+                                        ? "â€”"
                                         : appointmentCount}
                                 </h2>
 
@@ -3703,7 +3576,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                 <h2>
                                     {loading
-                                        ? "—"
+                                        ? "â€”"
                                         : admissionCount}
                                 </h2>
 
@@ -4011,7 +3884,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                             <span className="total-label">
 
                                 {loading
-                                    ? "—"
+                                    ? "â€”"
                                     : `${totalRooms} Total`}
 
                             </span>
@@ -4025,7 +3898,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                 <span className="room-number vacant">
                                     {loading
-                                        ? "—"
+                                        ? "â€”"
                                         : vacantRooms}
                                 </span>
 
@@ -4043,7 +3916,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                 <span className="room-number occupied">
                                     {loading
-                                        ? "—"
+                                        ? "â€”"
                                         : occupiedRooms}
                                 </span>
 
@@ -4515,10 +4388,10 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
         const formatDateIndian = (dateValue) => {
             const dateKey = getDateKey(dateValue);
-            if (!dateKey || dateKey.length !== 10) return "—";
+            if (!dateKey || dateKey.length !== 10) return "â€”";
 
             const [year, month, day] = dateKey.split("-");
-            if (!year || !month || !day) return "—";
+            if (!year || !month || !day) return "â€”";
 
             return `${day}/${month}/${year}`;
         };
@@ -4606,7 +4479,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                 <h2>My Dashboard</h2>
                                 <p>
                                     {authenticatedUser?.profile?.specialization ||
-                                        "Medical professional"} · {getBranchName()}
+                                        "Medical professional"} Â· {getBranchName()}
                                 </p>
                             </div>
                         </div>
@@ -4647,7 +4520,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                             "Doctor"}
                                     </p>
                                     <span style={{ color: "#64748b", fontSize: "13px" }}>
-                                        Doctor ID: D{doctorId} · {getBranchName()}
+                                        Doctor ID: D{doctorId} Â· {getBranchName()}
                                     </span>
                                 </div>
 
@@ -4663,7 +4536,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                             Qualification
                                         </span>
                                         <strong style={{ display: "block" }}>
-                                            {authenticatedUser?.profile?.qualification || "—"}
+                                            {authenticatedUser?.profile?.qualification || "â€”"}
                                         </strong>
                                     </div>
 
@@ -4672,7 +4545,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                             Experience
                                         </span>
                                         <strong style={{ display: "block" }}>
-                                            {authenticatedUser?.profile?.experience_years ?? "—"} years
+                                            {authenticatedUser?.profile?.experience_years ?? "â€”"} years
                                         </strong>
                                     </div>
                                 </div>
@@ -4794,15 +4667,15 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                                 fontSize: "12px",
                                                                 marginTop: "3px"
                                                             }}>
-                                                                P{appointment.patient_id} · View Details
+                                                                P{appointment.patient_id} Â· View Details
                                                             </span>
                                                         </button>
                                                     </td>
 
-                                                    <td>{appointment.time || "—"}</td>
+                                                    <td>{appointment.time || "â€”"}</td>
 
                                                     <td>
-                                                        {appointment.reason || "—"}
+                                                        {appointment.reason || "â€”"}
                                                     </td>
 
                                                     <td>
@@ -4931,11 +4804,11 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                         </td>
 
                                                         <td>
-                                                            {appointment.time || "—"}
+                                                            {appointment.time || "â€”"}
                                                         </td>
 
                                                         <td>
-                                                            {appointment.reason || "—"}
+                                                            {appointment.reason || "â€”"}
                                                         </td>
 
                                                         <td>
@@ -5023,9 +4896,9 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     </td>
 
                                                     <td>P{patient.patient_id}</td>
-                                                    <td>{patient.gender || "—"}</td>
-                                                    <td>{patient.blood_group || "—"}</td>
-                                                    <td>{patient.phone || "—"}</td>
+                                                    <td>{patient.gender || "â€”"}</td>
+                                                    <td>{patient.blood_group || "â€”"}</td>
+                                                    <td>{patient.phone || "â€”"}</td>
                                                     <td>{patient.allergies || "None recorded"}</td>
                                                 </tr>
                                             ))}
@@ -5126,7 +4999,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                 <tr>
                                                     <th>Patient</th>
                                                     <th>Heart Rate</th>
-                                                    <th>SpO₂</th>
+                                                    <th>SpOâ‚‚</th>
                                                     <th>Temperature</th>
                                                 </tr>
                                             </thead>
@@ -5149,17 +5022,17 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             <td>
                                                                 {vital.heart_rate ??
                                                                     vital.hr ??
-                                                                    "—"}
+                                                                    "â€”"}
                                                             </td>
                                                             <td>
                                                                 {vital.spo2 ??
                                                                     vital.spO2 ??
-                                                                    "—"}
+                                                                    "â€”"}
                                                             </td>
                                                             <td>
                                                                 {vital.temperature ??
                                                                     vital.temp ??
-                                                                    "—"}
+                                                                    "â€”"}
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -5250,7 +5123,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                 </h3>
                                                 <p>
                                                     {patient.first_name}{" "}
-                                                    {patient.last_name || ""} · P{patient.patient_id}
+                                                    {patient.last_name || ""} Â· P{patient.patient_id}
                                                 </p>
                                             </div>
 
@@ -5281,9 +5154,9 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                             >
                                                 {[
                                                     ["Patient ID", `P${patient.patient_id}`],
-                                                    ["Gender", patient.gender || "—"],
-                                                    ["Blood Group", patient.blood_group || "—"],
-                                                    ["Phone", patient.phone || "—"]
+                                                    ["Gender", patient.gender || "â€”"],
+                                                    ["Blood Group", patient.blood_group || "â€”"],
+                                                    ["Phone", patient.phone || "â€”"]
                                                 ].map(([label, value]) => (
                                                     <div className="page-stat-card" key={label}>
                                                         <div>
@@ -5313,11 +5186,11 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     </p>
                                                     <p>
                                                         <strong>Email:</strong>{" "}
-                                                        {patient.email || "—"}
+                                                        {patient.email || "â€”"}
                                                     </p>
                                                     <p>
                                                         <strong>Address:</strong>{" "}
-                                                        {patient.address || "—"}
+                                                        {patient.address || "â€”"}
                                                     </p>
                                                     <p>
                                                         <strong>Allergies:</strong>{" "}
@@ -5325,7 +5198,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     </p>
                                                     <p>
                                                         <strong>Insurance No:</strong>{" "}
-                                                        {patient.insurance_no || "—"}
+                                                        {patient.insurance_no || "â€”"}
                                                     </p>
                                                 </div>
 
@@ -5337,8 +5210,8 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                         <>
                                                             <p><strong>Appointment:</strong> A{appointment.appointment_id}</p>
                                                             <p><strong>Date:</strong> {formatDateIndian(appointment.date)}</p>
-                                                            <p><strong>Time:</strong> {appointment.time || "—"}</p>
-                                                            <p><strong>Reason:</strong> {appointment.reason || "—"}</p>
+                                                            <p><strong>Time:</strong> {appointment.time || "â€”"}</p>
+                                                            <p><strong>Reason:</strong> {appointment.reason || "â€”"}</p>
                                                             <p><strong>Status:</strong> {appointment.status || "Scheduled"}</p>
                                                         </>
                                                     ) : (
@@ -5367,8 +5240,8 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                                     <tr key={item.appointment_id}>
                                                                         <td>A{item.appointment_id}</td>
                                                                         <td>{formatDateIndian(item.date)}</td>
-                                                                        <td>{item.reason || "—"}</td>
-                                                                        <td>{item.status || "—"}</td>
+                                                                        <td>{item.reason || "â€”"}</td>
+                                                                        <td>{item.status || "â€”"}</td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
@@ -5395,10 +5268,10 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             <div key={admission.admission_id} style={{ padding: "10px 0", borderBottom: "1px solid #e5e7eb" }}>
                                                                 <strong>Admission A{admission.admission_id}</strong>
                                                                 <p style={{ margin: "5px 0" }}>
-                                                                    Room: {admission.room_id ? `R${admission.room_id}` : "—"}
+                                                                    Room: {admission.room_id ? `R${admission.room_id}` : "â€”"}
                                                                 </p>
                                                                 <p style={{ margin: "5px 0" }}>
-                                                                    Status: {admission.status || "—"}
+                                                                    Status: {admission.status || "â€”"}
                                                                 </p>
                                                             </div>
                                                         ))
@@ -5413,10 +5286,10 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                         patientVitals.map((vital, index) => (
                                                             <div key={vital._id || index} style={{ padding: "10px 0", borderBottom: "1px solid #e5e7eb" }}>
                                                                 <strong>
-                                                                    Heart Rate: {vital.heart_rate ?? vital.hr ?? "—"} bpm
+                                                                    Heart Rate: {vital.heart_rate ?? vital.hr ?? "â€”"} bpm
                                                                 </strong>
                                                                 <p style={{ margin: "5px 0" }}>
-                                                                    SpO₂: {vital.spo2 ?? vital.spO2 ?? "—"} · Temp: {vital.temperature ?? vital.temp ?? "—"}
+                                                                    SpOâ‚‚: {vital.spo2 ?? vital.spO2 ?? "â€”"} Â· Temp: {vital.temperature ?? vital.temp ?? "â€”"}
                                                                 </p>
                                                             </div>
                                                         ))
@@ -5478,9 +5351,34 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
             (vital) => Number(vital.patient_id) === Number(patientId)
         );
 
+        const totalBillAmount = patientBills.reduce(
+            (sum, bill) => sum + Number(bill.total_amount || 0),
+            0
+        );
+
+        const totalPaidAmount = patientBills.reduce(
+            (sum, bill) => sum + Number(bill.amount_paid || 0),
+            0
+        );
+
+        const totalPendingAmount = patientBills.reduce(
+            (sum, bill) => {
+                const total = Number(bill.total_amount || 0);
+                const paid = Number(bill.amount_paid || 0);
+                const left = Number(
+                    bill.amount_left ?? Math.max(total - paid, 0)
+                );
+                return sum + left;
+            },
+            0
+        );
+
         return (
             <div className="app">
-                <main className="main-content" style={{ marginLeft: 0, width: "100%" }}>
+                <main
+                    className="main-content"
+                    style={{ marginLeft: 0, width: "100%" }}
+                >
                     <header className="topbar">
                         <div className="topbar-left">
                             <div className="page-heading">
@@ -5519,8 +5417,33 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                         <div className="page-section-header">
                             <div>
                                 <h2>My Health Overview</h2>
-                                <p>Your appointments, medical information and billing</p>
+                                <p>
+                                    Your appointments, medical information and
+                                    billing
+                                </p>
                             </div>
+
+                            <button
+                                type="button"
+                                className="primary-action"
+                                onClick={() => {
+                                    setAppointmentForm({
+                                        patient_id: String(patientId),
+                                        date: new Date()
+                                            .toISOString()
+                                            .split("T")[0],
+                                        reason: "",
+                                        appointment_type: "Consultation",
+                                        preferred_doctor_id: ""
+                                    });
+                                    setAppointmentFormError("");
+                                    setAppointmentFormSuccess("");
+                                    setPatientBookingOpen(true);
+                                }}
+                            >
+                                <CalendarPlus size={16} />
+                                Book Appointment
+                            </button>
                         </div>
 
                         <div className="page-stat-grid">
@@ -5555,18 +5478,56 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                     <strong>{patientVitals.length}</strong>
                                 </div>
                             </div>
+
+                            <div className="page-stat-card green-card">
+                                <CreditCard size={22} />
+                                <div>
+                                    <span>Total Billing</span>
+                                    <strong>
+                                        â‚¹{totalBillAmount.toLocaleString("en-IN")}
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card">
+                                <CreditCard size={22} />
+                                <div>
+                                    <span>Amount Paid</span>
+                                    <strong>
+                                        â‚¹{totalPaidAmount.toLocaleString("en-IN")}
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div className="page-stat-card orange-card">
+                                <CreditCard size={22} />
+                                <div>
+                                    <span>Amount Pending</span>
+                                    <strong>
+                                        â‚¹{totalPendingAmount.toLocaleString("en-IN")}
+                                    </strong>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="data-card" style={{ marginTop: "24px" }}>
+                        {/* APPOINTMENTS */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "24px" }}
+                        >
                             <div className="data-card-header">
                                 <div>
                                     <h3>My Appointments</h3>
-                                    <p>Your upcoming and previous appointments</p>
+                                    <p>
+                                        Your upcoming and previous appointments
+                                    </p>
                                 </div>
                             </div>
 
                             {patientAppointments.length === 0 ? (
-                                <div className="table-empty">No appointments found.</div>
+                                <div className="table-empty">
+                                    No appointments found.
+                                </div>
                             ) : (
                                 <div className="table-wrapper">
                                     <table>
@@ -5578,33 +5539,945 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                 <th>Time</th>
                                                 <th>Reason</th>
                                                 <th>Status</th>
+                                                <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {patientAppointments.map((appointment) => (
-                                                <tr key={appointment.appointment_id}>
-                                                    <td>A{appointment.appointment_id}</td>
-                                                    <td>Dr. {appointment.doctor_id}</td>
-                                                    <td>{appointment.date ? new Date(appointment.date).toLocaleDateString() : "—"}</td>
-                                                    <td>{appointment.time || "—"}</td>
-                                                    <td>{appointment.reason || "—"}</td>
-                                                    <td>
-                                                        <span className="status-badge status-blue">
-                                                            {appointment.status || "Scheduled"}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {patientAppointments.map(
+                                                (appointment) => {
+                                                    const appointmentStatus = String(
+                                                        appointment.status || "Scheduled"
+                                                    ).toLowerCase();
+
+                                                    const canCancel = ![
+                                                        "completed",
+                                                        "cancelled",
+                                                    ].includes(appointmentStatus);
+
+                                                    return (
+                                                        <tr
+                                                            key={appointment.appointment_id}
+                                                        >
+                                                            <td>
+                                                                A{appointment.appointment_id}
+                                                            </td>
+                                                            <td>
+                                                                Dr. {appointment.doctor_id}
+                                                            </td>
+                                                            <td>
+                                                                {appointment.date
+                                                                    ? new Date(
+                                                                          appointment.date
+                                                                      ).toLocaleDateString()
+                                                                    : "—"}
+                                                            </td>
+                                                            <td>{appointment.time || "—"}</td>
+                                                            <td>{appointment.reason || "—"}</td>
+                                                            <td>
+                                                                <span
+                                                                    className={`status-badge ${
+                                                                        appointmentStatus === "completed"
+                                                                            ? "status-green"
+                                                                            : appointmentStatus === "cancelled"
+                                                                                ? "status-gray"
+                                                                                : "status-blue"
+                                                                    }`}
+                                                                >
+                                                                    {appointment.status || "Scheduled"}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {canCancel ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleCancelAppointment(
+                                                                                appointment.appointment_id
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            cancellingAppointmentId ===
+                                                                            Number(appointment.appointment_id)
+                                                                        }
+                                                                        style={{
+                                                                            padding: "7px 12px",
+                                                                            border: "1px solid #dc2626",
+                                                                            borderRadius: "6px",
+                                                                            background:
+                                                                                cancellingAppointmentId ===
+                                                                                Number(appointment.appointment_id)
+                                                                                    ? "#fca5a5"
+                                                                                    : "#fff",
+                                                                            color: "#dc2626",
+                                                                            cursor:
+                                                                                cancellingAppointmentId ===
+                                                                                Number(appointment.appointment_id)
+                                                                                    ? "not-allowed"
+                                                                                    : "pointer",
+                                                                            fontWeight: 600,
+                                                                        }}
+                                                                    >
+                                                                        {cancellingAppointmentId ===
+                                                                        Number(appointment.appointment_id)
+                                                                            ? "Cancelling..."
+                                                                            : "Cancel"}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span
+                                                                        style={{
+                                                                            color: "#6b7280",
+                                                                            fontSize: "12px",
+                                                                        }}
+                                                                    >
+                                                                        —
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ADMISSIONS */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "20px", padding: "20px" }}
+                        >
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>My Admissions</h3>
+                                    <p>Your hospital admission records</p>
+                                </div>
+                            </div>
+
+                            {patientAdmissions.length === 0 ? (
+                                <div className="table-empty">
+                                    No admission records available.
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Admission</th>
+                                                <th>Doctor</th>
+                                                <th>Room</th>
+                                                <th>Admit Date</th>
+                                                <th>Discharge Date</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {patientAdmissions.map(
+                                                (admission) => (
+                                                    <tr
+                                                        key={
+                                                            admission.admission_id
+                                                        }
+                                                    >
+                                                        <td>
+                                                            <span className="id-badge green-id">
+                                                                ADM
+                                                                {
+                                                                    admission.admission_id
+                                                                }
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            Dr.{" "}
+                                                            {
+                                                                admission.attending_doctor_id
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            {admission.room_id
+                                                                ? `R${admission.room_id}`
+                                                                : "â€”"}
+                                                        </td>
+                                                        <td>
+                                                            {admission.admit_date
+                                                                ? new Date(
+                                                                      admission.admit_date
+                                                                  ).toLocaleDateString()
+                                                                : "â€”"}
+                                                        </td>
+                                                        <td>
+                                                            {admission.discharge_date
+                                                                ? new Date(
+                                                                      admission.discharge_date
+                                                                  ).toLocaleDateString()
+                                                                : "â€”"}
+                                                        </td>
+                                                        <td>
+                                                            {admission.type ||
+                                                                "â€”"}
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                className={`status-badge ${
+                                                                    String(
+                                                                        admission.status ||
+                                                                            "Active"
+                                                                    ).toLowerCase() ===
+                                                                    "discharged"
+                                                                        ? "status-gray"
+                                                                        : "status-green"
+                                                                }`}
+                                                            >
+                                                                {admission.status ||
+                                                                    "Active"}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* BILLING */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "20px", padding: "20px" }}
+                        >
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>My Bills & Payments</h3>
+                                    <p>Your billing and payment information</p>
+                                </div>
+                            </div>
+
+                            {patientBills.length === 0 ? (
+                                <div className="table-empty">
+                                    No billing records available.
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Bill ID</th>
+                                                <th>Admission</th>
+                                                <th>Bill Date</th>
+                                                <th>Total Amount</th>
+                                                <th>Amount Paid</th>
+                                                <th>Amount Left</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {patientBills.map((bill) => {
+                                                const totalAmount = Number(
+                                                    bill.total_amount || 0
+                                                );
+                                                const amountPaid = Number(
+                                                    bill.amount_paid || 0
+                                                );
+                                                const amountLeft = Number(
+                                                    bill.amount_left ??
+                                                        Math.max(
+                                                            totalAmount -
+                                                                amountPaid,
+                                                            0
+                                                        )
+                                                );
+
+                                                const status =
+                                                    bill.status ||
+                                                    (amountLeft <= 0
+                                                        ? "Paid"
+                                                        : amountPaid > 0
+                                                        ? "Partially Paid"
+                                                        : "Pending");
+
+                                                return (
+                                                    <tr key={bill.bill_id}>
+                                                        <td>
+                                                            <span className="id-badge orange-id">
+                                                                B{bill.bill_id}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            Admission #
+                                                            {
+                                                                bill.admission_id
+                                                            }
+                                                        </td>
+                                                        <td>
+                                                            {bill.bill_date
+                                                                ? new Date(
+                                                                      bill.bill_date
+                                                                  ).toLocaleDateString()
+                                                                : "â€”"}
+                                                        </td>
+                                                        <td className="money-cell">
+                                                            â‚¹
+                                                            {totalAmount.toLocaleString(
+                                                                "en-IN"
+                                                            )}
+                                                        </td>
+                                                        <td className="money-cell">
+                                                            â‚¹
+                                                            {amountPaid.toLocaleString(
+                                                                "en-IN"
+                                                            )}
+                                                        </td>
+                                                        <td className="money-cell">
+                                                            â‚¹
+                                                            {amountLeft.toLocaleString(
+                                                                "en-IN"
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                className={`status-badge ${
+                                                                    status
+                                                                        .toLowerCase()
+                                                                        .includes(
+                                                                            "paid"
+                                                                        ) &&
+                                                                    !status
+                                                                        .toLowerCase()
+                                                                        .includes(
+                                                                            "partially"
+                                                                        )
+                                                                        ? "status-green"
+                                                                        : status
+                                                                              .toLowerCase()
+                                                                              .includes(
+                                                                                  "partially"
+                                                                              )
+                                                                        ? "status-blue"
+                                                                        : "status-gray"
+                                                                }`}
+                                                            >
+                                                                {status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* DOCTOR NOTES */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "20px", padding: "20px" }}
+                        >
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>Doctor Notes</h3>
+                                    <p>
+                                        Clinical notes recorded for your
+                                        medical care
+                                    </p>
+                                </div>
+                            </div>
+
+                            {patientNotes.length === 0 ? (
+                                <div className="table-empty">
+                                    No doctor notes available for this patient.
+                                </div>
+                            ) : (
+                                <div>
+                                    {patientNotes.map((note, index) => (
+                                        <div
+                                            key={note._id || index}
+                                            style={{
+                                                padding: "14px 0",
+                                                borderBottom:
+                                                    "1px solid #e5e7eb"
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    justifyContent:
+                                                        "space-between",
+                                                    gap: "16px",
+                                                    alignItems: "flex-start"
+                                                }}
+                                            >
+                                                <strong>
+                                                    {note.diagnosis ||
+                                                        note.title ||
+                                                        "Clinical Note"}
+                                                </strong>
+
+                                                <span
+                                                    style={{
+                                                        fontSize: "12px",
+                                                        color: "#64748b"
+                                                    }}
+                                                >
+                                                    {note.created_at ||
+                                                    note.timestamp
+                                                        ? new Date(
+                                                              note.created_at ||
+                                                                  note.timestamp
+                                                          ).toLocaleString()
+                                                        : ""}
+                                                </span>
+                                            </div>
+
+                                            <p
+                                                style={{
+                                                    margin:
+                                                        "7px 0 0",
+                                                    color: "#475569",
+                                                    lineHeight: 1.6
+                                                }}
+                                            >
+                                                {note.notes ||
+                                                    note.note ||
+                                                    note.observations ||
+                                                    "No additional notes recorded."}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* IOT VITALS */}
+                        <div
+                            className="data-card"
+                            style={{ marginTop: "20px", padding: "20px" }}
+                        >
+                            <div className="data-card-header">
+                                <div>
+                                    <h3>Recent IoT Vitals</h3>
+                                    <p>
+                                        Health data collected from connected
+                                        monitoring devices
+                                    </p>
+                                </div>
+                            </div>
+
+                            {patientVitals.length === 0 ? (
+                                <div className="table-empty">
+                                    No IoT vital records available for this
+                                    patient.
+                                </div>
+                            ) : (
+                                <div className="table-wrapper">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Recorded At</th>
+                                                <th>Heart Rate</th>
+                                                <th>GSR</th>
+                                                <th>Temperature</th>
+                                                <th>Air Quality</th>
+                                                <th>SpOâ‚‚</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {patientVitals.map(
+                                                (vital, index) => (
+                                                    <tr
+                                                        key={
+                                                            vital._id || index
+                                                        }
+                                                    >
+                                                        <td>
+                                                            {vital.timestamp
+                                                                ? new Date(
+                                                                      vital.timestamp
+                                                                  ).toLocaleString()
+                                                                : "â€”"}
+                                                        </td>
+                                                        <td>
+                                                            {vital.heart_rate ??
+                                                                vital.heartRate ??
+                                                                vital.hr ??
+                                                                "â€”"}
+                                                            {(vital.heart_rate ??
+                                                                vital.heartRate ??
+                                                                vital.hr) !==
+                                                                undefined &&
+                                                                " BPM"}
+                                                        </td>
+                                                        <td>
+                                                            {vital.gsr ??
+                                                                vital.gsr_value ??
+                                                                "â€”"}
+                                                        </td>
+                                                        <td>
+                                                            {vital.temperature ??
+                                                                vital.temp ??
+                                                                "â€”"}
+                                                            {(vital.temperature ??
+                                                                vital.temp) !==
+                                                                undefined &&
+                                                                " Â°C"}
+                                                        </td>
+                                                        <td>
+                                                            {vital.air_quality ??
+                                                                vital.airQuality ??
+                                                                "â€”"}
+                                                        </td>
+                                                        <td>
+                                                            {vital.spo2 ??
+                                                                vital.spO2 ??
+                                                                "â€”"}
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
                             )}
                         </div>
                     </section>
+                    {patientBookingOpen && (
+                        <div
+                            style={{
+                                position: "fixed",
+                                inset: 0,
+                                background: "rgba(15, 23, 42, 0.48)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "24px",
+                                zIndex: 1000
+                            }}
+                            onMouseDown={(event) => {
+                                if (
+                                    event.target === event.currentTarget &&
+                                    !addingAppointment
+                                ) {
+                                    setPatientBookingOpen(false);
+                                }
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "100%",
+                                    maxWidth: "620px",
+                                    maxHeight: "90vh",
+                                    overflowY: "auto",
+                                    background: "#ffffff",
+                                    borderRadius: "16px",
+                                    boxShadow:
+                                        "0 24px 70px rgba(15, 23, 42, 0.25)",
+                                    padding: "26px"
+                                }}
+                                onMouseDown={(event) =>
+                                    event.stopPropagation()
+                                }
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "flex-start",
+                                        marginBottom: "20px"
+                                    }}
+                                >
+                                    <div>
+                                        <h2
+                                            style={{
+                                                margin: 0,
+                                                color: "#0f172a",
+                                                fontSize: "22px"
+                                            }}
+                                        >
+                                            Book Appointment
+                                        </h2>
+
+                                        <p
+                                            style={{
+                                                margin: "6px 0 0",
+                                                color: "#64748b",
+                                                fontSize: "13px"
+                                            }}
+                                        >
+                                            Describe your problem and select a
+                                            preferred date. The system will
+                                            automatically assign a doctor and the
+                                            earliest available 30-minute slot.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            !addingAppointment &&
+                                            setPatientBookingOpen(false)
+                                        }
+                                        disabled={addingAppointment}
+                                        style={{
+                                            border: "none",
+                                            background: "#f1f5f9",
+                                            color: "#475569",
+                                            width: "36px",
+                                            height: "36px",
+                                            borderRadius: "9px",
+                                            fontSize: "21px",
+                                            cursor: addingAppointment
+                                                ? "not-allowed"
+                                                : "pointer"
+                                        }}
+                                    >
+                                        Ã—
+                                    </button>
+                                </div>
+
+                                {appointmentFormError && (
+                                    <div
+                                        style={{
+                                            marginBottom: "14px",
+                                            padding: "11px 13px",
+                                            background: "#fef2f2",
+                                            border: "1px solid #fecaca",
+                                            borderRadius: "9px",
+                                            color: "#b91c1c",
+                                            fontSize: "13px"
+                                        }}
+                                    >
+                                        {appointmentFormError}
+                                    </div>
+                                )}
+
+                                {appointmentFormSuccess && (
+                                    <div
+                                        style={{
+                                            marginBottom: "14px",
+                                            padding: "11px 13px",
+                                            background: "#f0fdf4",
+                                            border: "1px solid #bbf7d0",
+                                            borderRadius: "9px",
+                                            color: "#15803d",
+                                            fontSize: "13px"
+                                        }}
+                                    >
+                                        {appointmentFormSuccess}
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleAddAppointment}>
+                                    <div
+                                        style={{
+                                            display: "grid",
+                                            gridTemplateColumns:
+                                                "repeat(2, minmax(0, 1fr))",
+                                            gap: "16px"
+                                        }}
+                                    >
+                                        <div>
+                                            <label
+                                                style={{
+                                                    display: "block",
+                                                    marginBottom: "7px",
+                                                    color: "#334155",
+                                                    fontSize: "13px",
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Patient
+                                            </label>
+
+                                            <div
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    padding: "11px 12px",
+                                                    border: "1px solid #dbe3ef",
+                                                    borderRadius: "9px",
+                                                    background: "#f8fafc",
+                                                    color: "#475569",
+                                                    fontSize: "14px"
+                                                }}
+                                            >
+                                                P{patientId} â€”{" "}
+                                                {getUserDisplayName()}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label
+                                                style={{
+                                                    display: "block",
+                                                    marginBottom: "7px",
+                                                    color: "#334155",
+                                                    fontSize: "13px",
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Appointment Type *
+                                            </label>
+
+                                            <select
+                                                name="appointment_type"
+                                                value={
+                                                    appointmentForm.appointment_type
+                                                }
+                                                onChange={
+                                                    handleAppointmentFormChange
+                                                }
+                                                disabled={addingAppointment}
+                                                required
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    padding: "11px 12px",
+                                                    border: "1px solid #dbe3ef",
+                                                    borderRadius: "9px",
+                                                    background: "#ffffff",
+                                                    color: "#0f172a"
+                                                }}
+                                            >
+                                                <option value="Consultation">
+                                                    Consultation
+                                                </option>
+                                                <option value="Follow-up">
+                                                    Follow-up
+                                                </option>
+                                                <option value="Emergency">
+                                                    Emergency
+                                                </option>
+                                            </select>
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                gridColumn: "1 / -1"
+                                            }}
+                                        >
+                                            <label
+                                                style={{
+                                                    display: "block",
+                                                    marginBottom: "7px",
+                                                    color: "#334155",
+                                                    fontSize: "13px",
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Problem *
+                                            </label>
+
+                                            <input
+                                                type="text"
+                                                name="reason"
+                                                value={
+                                                    appointmentForm.reason
+                                                }
+                                                onChange={
+                                                    handleAppointmentFormChange
+                                                }
+                                                disabled={addingAppointment}
+                                                required
+                                                placeholder="e.g. severe headache and dizziness"
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    padding: "11px 12px",
+                                                    border: "1px solid #dbe3ef",
+                                                    borderRadius: "9px",
+                                                    background: "#ffffff",
+                                                    color: "#0f172a"
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                gridColumn: "1 / -1"
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    padding: "13px 14px",
+                                                    border: "1px solid #bfdbfe",
+                                                    borderRadius: "9px",
+                                                    background: "#eff6ff",
+                                                    color: "#1e3a8a",
+                                                    fontSize: "13px",
+                                                    lineHeight: 1.5
+                                                }}
+                                            >
+                                                <strong>
+                                                    Automatic Doctor Assignment:
+                                                </strong>{" "}
+                                                PostgreSQL will select a suitable
+                                                doctor from your hospital branch,
+                                                preferring your previous doctor
+                                                when appropriate and finding the
+                                                earliest available 30-minute slot. You
+                                                may optionally request a preferred
+                                                doctor below.
+                                            </div>
+                                        </div>
+
+                                        <div style={{ gridColumn: "1 / -1" }}>
+                                            <label
+                                                style={{
+                                                    display: "block",
+                                                    marginBottom: "7px",
+                                                    color: "#334155",
+                                                    fontSize: "13px",
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Preferred Doctor (Optional)
+                                            </label>
+                                            <select
+                                                name="preferred_doctor_id"
+                                                value={appointmentForm.preferred_doctor_id || ""}
+                                                onChange={handleAppointmentFormChange}
+                                                disabled={addingAppointment}
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    padding: "11px 12px",
+                                                    border: "1px solid #dbe3ef",
+                                                    borderRadius: "9px",
+                                                    background: "#ffffff",
+                                                    color: "#0f172a"
+                                                }}
+                                            >
+                                                <option value="">No preference â€” assign automatically</option>
+                                                {doctors
+                                                    .filter((doctor) =>
+                                                        Number(doctor.branch_id) === Number(branchId)
+                                                    )
+                                                    .map((doctor) => (
+                                                        <option
+                                                            key={doctor.doctor_id}
+                                                            value={doctor.doctor_id}
+                                                        >
+                                                            {`Dr. ${doctor.first_name || ""} ${doctor.last_name || ""}`.trim()} 
+                                                            {doctor.specialization ? `â€” ${doctor.specialization}` : ""}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                            <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "12px" }}>
+                                                Your preference is considered only if the doctor is suitable for your problem and available at the selected time.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label
+                                                style={{
+                                                    display: "block",
+                                                    marginBottom: "7px",
+                                                    color: "#334155",
+                                                    fontSize: "13px",
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                Date *
+                                            </label>
+
+                                            <input
+                                                type="date"
+                                                name="date"
+                                                value={
+                                                    appointmentForm.date
+                                                }
+                                                onChange={
+                                                    handleAppointmentFormChange
+                                                }
+                                                disabled={addingAppointment}
+                                                required
+                                                min={
+                                                    new Date()
+                                                        .toISOString()
+                                                        .split("T")[0]
+                                                }
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    padding: "11px 12px",
+                                                    border: "1px solid #dbe3ef",
+                                                    borderRadius: "9px",
+                                                    background: "#ffffff",
+                                                    color: "#0f172a"
+                                                }}
+                                            />
+                                        </div>
+
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            marginTop: "22px",
+                                            paddingTop: "18px",
+                                            borderTop: "1px solid #e2e8f0",
+                                            display: "flex",
+                                            justifyContent: "flex-end",
+                                            gap: "10px"
+                                        }}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                !addingAppointment &&
+                                                setPatientBookingOpen(false)
+                                            }
+                                            disabled={addingAppointment}
+                                            style={{
+                                                padding: "11px 18px",
+                                                borderRadius: "9px",
+                                                border: "1px solid #dbe3ef",
+                                                background: "#ffffff",
+                                                color: "#475569",
+                                                fontWeight: 600,
+                                                cursor: addingAppointment
+                                                    ? "not-allowed"
+                                                    : "pointer"
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+
+                                        <button
+                                            type="submit"
+                                            disabled={addingAppointment}
+                                            style={{
+                                                padding: "11px 20px",
+                                                borderRadius: "9px",
+                                                border: "none",
+                                                background: "#2563eb",
+                                                color: "#ffffff",
+                                                fontWeight: 600,
+                                                cursor: addingAppointment
+                                                    ? "not-allowed"
+                                                    : "pointer",
+                                                opacity: addingAppointment
+                                                    ? 0.7
+                                                    : 1
+                                            }}
+                                        >
+                                            {addingAppointment
+                                                ? "Booking..."
+                                                : "Book Appointment"}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
                 </main>
             </div>
         );
     };
+
 
 
     // =====================================================
@@ -5801,7 +6674,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                         : "pointer"
                                 }}
                             >
-                                ×
+                                Ã—
                             </button>
                         </div>
 
@@ -5897,7 +6770,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                     {
                                                         patient.patient_id
                                                     }
-                                                    {" — "}
+                                                    {" â€” "}
                                                     {
                                                         patient.first_name ||
                                                         ""
@@ -5964,7 +6837,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                             fontWeight: 600
                                         }}
                                     >
-                                        Automatically Assigned Doctor
+                                        Doctor Assignment
                                     </label>
 
                                     <div
@@ -5976,30 +6849,14 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                             color: "#1e3a8a",
                                             minHeight: "48px",
                                             display: "flex",
-                                            alignItems: "center"
+                                            alignItems: "center",
+                                            lineHeight: 1.5
                                         }}
                                     >
-                                        {appointmentForm.doctor_id
-                                            ? (() => {
-                                                const doctor =
-                                                    doctors.find(
-                                                        (item) =>
-                                                            Number(
-                                                                item.doctor_id
-                                                            ) ===
-                                                            Number(
-                                                                appointmentForm.doctor_id
-                                                            )
-                                                    );
-
-                                                return doctor
-                                                    ? `Dr. ${doctor.first_name || ""} ${doctor.last_name || ""} — ${String(doctor.specialization || "").toLowerCase() === "general physician" ? "General Medicine" : doctor.specialization}`
-                                                    : "No suitable doctor found";
-                                            })()
-                                            : appointmentForm.patient_id &&
-                                              appointmentForm.reason
-                                                ? "No suitable doctor found"
-                                                : "Enter the patient's problem to assign a doctor"}
+                                        Doctor will be assigned automatically by
+                                        PostgreSQL based on the patient's branch,
+                                        appointment reason, previous doctor history,
+                                        and slot availability.
                                     </div>
                                 </div>
 
@@ -6044,41 +6901,6 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                     />
                                 </div>
 
-                                <div>
-                                    <label
-                                        style={{
-                                            display: "block",
-                                            marginBottom: "7px",
-                                            color: "#334155",
-                                            fontSize: "13px",
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        Time *
-                                    </label>
-
-                                    <input
-                                        type="time"
-                                        name="time"
-                                        value={
-                                            appointmentForm.time
-                                        }
-                                        onChange={
-                                            handleAppointmentFormChange
-                                        }
-                                        disabled={addingAppointment}
-                                        required
-                                        style={{
-                                            width: "100%",
-                                            boxSizing: "border-box",
-                                            padding: "11px 12px",
-                                            border: "1px solid #dbe3ef",
-                                            borderRadius: "9px",
-                                            background: "#ffffff",
-                                            color: "#0f172a"
-                                        }}
-                                    />
-                                </div>
 
                                 <div>
                                     <label
@@ -6162,10 +6984,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
                                 <button
                                     type="submit"
-                                    disabled={
-                                        addingAppointment ||
-                                        !appointmentForm.doctor_id
-                                    }
+                                    disabled={addingAppointment}
                                     style={{
                                         padding: "11px 20px",
                                         borderRadius: "9px",
@@ -6174,13 +6993,11 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                         color: "#ffffff",
                                         fontWeight: 600,
                                         cursor:
-                                            addingAppointment ||
-                                            !appointmentForm.doctor_id
+                                            addingAppointment
                                                 ? "not-allowed"
                                                 : "pointer",
                                         opacity:
-                                            addingAppointment ||
-                                            !appointmentForm.doctor_id
+                                            addingAppointment
                                                 ? 0.7
                                                 : 1
                                     }}
@@ -6280,7 +7097,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                     color: "#475569"
                                 }}
                             >
-                                ×
+                                Ã—
                             </button>
 
                         </div>
@@ -6438,7 +7255,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                         patient.patient_id
                                                     }
                                                 >
-                                                    P{patient.patient_id} —{" "}
+                                                    P{patient.patient_id} â€”{" "}
                                                     {patient.first_name}{" "}
                                                     {patient.last_name || ""}
                                                 </option>
@@ -6526,7 +7343,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             doctor.doctor_id
                                                         }
                                                     >
-                                                        D{doctor.doctor_id} —{" "}
+                                                        D{doctor.doctor_id} â€”{" "}
                                                         Dr.{" "}
                                                         {doctor.first_name}{" "}
                                                         {doctor.last_name || ""}
@@ -6617,12 +7434,12 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                             room.room_id
                                                         }
                                                     >
-                                                        Room {room.room_id} —{" "}
+                                                        Room {room.room_id} â€”{" "}
                                                         {room.room_type ||
                                                             "General"}{" "}
-                                                        — Floor{" "}
+                                                        â€” Floor{" "}
                                                         {room.floor_no ??
-                                                            "—"}
+                                                            "â€”"}
                                                     </option>
                                                 )
                                             )}
@@ -6794,15 +7611,15 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                                 }}
                                             >
                                                 {latestAppointment
-                                                    ? `A${latestAppointment.appointment_id} — ${
+                                                    ? `A${latestAppointment.appointment_id} â€” ${
                                                         latestAppointment.date
                                                             ? new Date(
                                                                 latestAppointment.date
                                                             ).toLocaleDateString()
                                                             : "No Date"
-                                                    } — Dr. ${
+                                                    } â€” Dr. ${
                                                         latestAppointment.doctor_id
-                                                    } — ${
+                                                    } â€” ${
                                                         latestAppointment.status ||
                                                         "Appointment"
                                                     }`
@@ -6954,7 +7771,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                 <h2 style={{ margin: 0, color: "#0f172a", fontSize: "24px" }}>Add New Doctor</h2>
                                 <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "14px" }}>Register a doctor in the hospital system</p>
                             </div>
-                            <button type="button" onClick={() => !addingDoctor && setAddDoctorOpen(false)} style={{ border: "none", background: "#f1f5f9", width: "36px", height: "36px", borderRadius: "10px", fontSize: "22px", cursor: "pointer", color: "#475569" }}>×</button>
+                            <button type="button" onClick={() => !addingDoctor && setAddDoctorOpen(false)} style={{ border: "none", background: "#f1f5f9", width: "36px", height: "36px", borderRadius: "10px", fontSize: "22px", cursor: "pointer", color: "#475569" }}>Ã—</button>
                         </div>
 
                         {doctorFormError && (
@@ -6981,7 +7798,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                     ["specialization", "Specialization", "text", true],
                                     ["qualification", "Qualification", "text", true],
                                     ["experience_years", "Experience (Years)", "text", true],
-                                    ["consultation_fee", "Consultation Fee (₹)", "text", true]
+                                    ["consultation_fee", "Consultation Fee (â‚¹)", "text", true]
                                 ].map(([name, label, type, required]) => (
                                     <div key={name} style={{ gridColumn: name === "address" ? "1 / -1" : "auto" }}>
                                         <label style={{ display: "block", marginBottom: "7px", fontSize: "13px", fontWeight: 600, color: "#334155" }}>
@@ -7143,7 +7960,7 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
                                     color: "#475569"
                                 }}
                             >
-                                ×
+                                Ã—
                             </button>
 
                         </div>
@@ -7494,3 +8311,4 @@ const [doctorFormSuccess, setDoctorFormSuccess] = useState("");
 
 
 export default App; 
+

@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 const { MongoClient } = require("mongodb");
@@ -1266,83 +1266,131 @@ app.get(
 
 
 // Create appointment
+app.post("/api/appointments", async (req, res) => {
+    const client = await pool.connect();
 
-app.post(
-    "/api/appointments",
-    async (req, res) => {
+    try {
+        const {
+            patient_id,
+            preferred_doctor_id,
+            date,
+            reason,
+            appointment_type
+        } = req.body;
 
-        try {
-
-            const {
-                patient_id,
-                doctor_id,
-                date,
-                time,
-                reason,
-                appointment_type
-            } = req.body;
-
-
-            if (
-                !patient_id ||
-                !doctor_id ||
-                !date ||
-                !time
-            ) {
-
-                return res.status(400).json({
-                    error:
-                        "Patient, doctor, date and time are required"
-                });
-
-            }
-
-
-            await pool.query(
-                `
-                CALL BookAppointment(
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    $6
-                )
-                `,
-                [
-                    patient_id,
-                    doctor_id,
-                    date,
-                    time,
-                    reason,
-                    appointment_type
-                ]
-            );
-
-
-            res.status(201).json({
-
-                message:
-                    "Appointment booked successfully"
-
+        if (!patient_id || !date || !reason || !String(reason).trim()) {
+            return res.status(400).json({
+                error: "Patient, date and appointment reason are required"
             });
-
-        } catch (error) {
-
-            console.error(
-                "Error booking appointment:",
-                error.message
-            );
-
-            res.status(400).json({
-                error:
-                    error.message
-            });
-
         }
 
+        const patientId = Number(patient_id);
+
+        if (!Number.isInteger(patientId) || patientId <= 0) {
+            return res.status(400).json({
+                error: "Patient ID must be a valid positive integer"
+            });
+        }
+
+        let preferredDoctorId = null;
+
+        if (
+            preferred_doctor_id !== undefined &&
+            preferred_doctor_id !== null &&
+            preferred_doctor_id !== ""
+        ) {
+            preferredDoctorId = Number(preferred_doctor_id);
+
+            if (!Number.isInteger(preferredDoctorId) || preferredDoctorId <= 0) {
+                return res.status(400).json({
+                    error: "Preferred doctor ID must be a valid positive integer"
+                });
+            }
+        }
+
+        await client.query("BEGIN");
+
+        // Remember the current highest ID so we can fetch this exact booking,
+        // even if the patient books the same reason/date/type more than once.
+        const previousAppointmentResult = await client.query(
+            "SELECT COALESCE(MAX(appointment_id), 0) AS max_id FROM public.appointment"
+        );
+        const previousMaxAppointmentId = Number(
+            previousAppointmentResult.rows[0].max_id
+        );
+
+        // PostgreSQL automatically assigns the appointment time.
+        await client.query(
+            "CALL public.bookappointment($1, $2, $3, $4, $5, $6)",
+            [
+                patientId,
+                preferredDoctorId,
+                date,
+                null,
+                String(reason).trim(),
+                appointment_type || "Consultation"
+            ]
+        );
+
+        // Retrieve the appointment created by this booking.
+        const result = await client.query(
+            `
+            SELECT
+                a.appointment_id,
+                a.doctor_id AS assigned_doctor_id,
+                TRIM(CONCAT(
+                    doctor_person.first_name,
+                    ' ',
+                    COALESCE(doctor_person.last_name, '')
+                )) AS assigned_doctor_name,
+                TO_CHAR(a.date, 'YYYY-MM-DD') AS appointment_date,
+                TO_CHAR(a.time, 'HH12:MI AM') AS appointment_time
+            FROM public.appointment a
+            JOIN public.doctor d
+                ON d.doctor_id = a.doctor_id
+            JOIN public.person doctor_person
+                ON doctor_person.person_id = d.person_id
+            WHERE a.patient_id = $1
+              AND a.date = $2
+              AND a.reason = $3
+              AND a.appointment_type = $4
+              AND a.appointment_id > $5
+              AND a.status IS DISTINCT FROM 'Cancelled'
+            ORDER BY a.appointment_id DESC
+            LIMIT 1
+            `,
+            [
+                patientId,
+                date,
+                String(reason).trim(),
+                appointment_type || "Consultation",
+                previousMaxAppointmentId
+            ]
+        );
+
+        if (!result.rows.length) {
+            throw new Error(
+                "Appointment was booked, but its allocated details could not be retrieved."
+            );
+        }
+
+        await client.query("COMMIT");
+
+        return res.status(201).json({
+            message: "Appointment booked successfully",
+            ...result.rows[0]
+        });
+    } catch (error) {
+        await client.query("ROLLBACK").catch(() => {});
+        console.error("Error booking appointment:", error.message);
+
+        return res.status(400).json({
+            error: error.message
+        });
+    } finally {
+        client.release();
     }
-);
+});
 
 
 // =====================================================
@@ -1427,6 +1475,67 @@ app.put(
         }
     }
 );
+
+
+// =====================================================
+// CANCEL APPOINTMENT (preserves appointment history)
+// =====================================================
+
+app.put("/api/appointments/:appointmentId/cancel", async (req, res) => {
+    const appointmentId = Number(req.params.appointmentId);
+
+    if (!Number.isInteger(appointmentId) || appointmentId <= 0) {
+        return res.status(400).json({ error: "Invalid appointment ID." });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const currentResult = await client.query(
+            `SELECT appointment_id, status
+             FROM public.appointment
+             WHERE appointment_id = $1
+             FOR UPDATE`,
+            [appointmentId]
+        );
+
+        if (currentResult.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return res.status(404).json({ error: "Appointment not found." });
+        }
+
+        const currentStatus = String(currentResult.rows[0].status || "Scheduled").toLowerCase();
+        if (currentStatus === "completed") {
+            await client.query("ROLLBACK");
+            return res.status(409).json({ error: "Completed appointments cannot be cancelled." });
+        }
+        if (currentStatus === "cancelled") {
+            await client.query("ROLLBACK");
+            return res.status(409).json({ error: "This appointment is already cancelled." });
+        }
+
+        const updatedResult = await client.query(
+            `UPDATE public.appointment
+             SET status = 'Cancelled'
+             WHERE appointment_id = $1
+             RETURNING appointment_id, patient_id, doctor_id, branch_id, date, time, status, reason, appointment_type`,
+            [appointmentId]
+        );
+
+        await client.query("COMMIT");
+        return res.json({
+            message: `Appointment A${appointmentId} cancelled successfully.`,
+            appointment: updatedResult.rows[0]
+        });
+    } catch (error) {
+        await client.query("ROLLBACK").catch(() => {});
+        console.error("Cancel Appointment Error:", error.message);
+        return res.status(500).json({ error: error.message || "Failed to cancel appointment." });
+    } finally {
+        client.release();
+    }
+});
 
 
 // =====================================================
